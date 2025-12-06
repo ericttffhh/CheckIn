@@ -1,6 +1,7 @@
 // 引入 Firebase SDK 模組
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getFirestore, collection, getDocs, query, orderBy, doc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+// 確保引入 getDoc，用於檢查建檔時學號重複
+import { getFirestore, collection, getDocs, query, orderBy, doc, deleteDoc, writeBatch, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 
 // Your web app's Firebase configuration
@@ -13,10 +14,12 @@ const firebaseConfig = {
   appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
 };
 
+
 // 初始化 Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const checkinsCol = collection(db, "checkins");
+const checkinsCol = collection(db, "checkins"); // 打卡紀錄
+const usersCol = collection(db, "users"); // ❗ 建檔紀錄
 
 // --- 管理員密碼設定 (僅為模擬) ---
 const ADMIN_USER = "ericqw";
@@ -28,30 +31,73 @@ export function handleAdminLogin() {
     const user = document.getElementById('admin-user').value;
     const pass = document.getElementById('admin-pass').value;
     const message = document.getElementById('admin-message');
-    const display = document.getElementById('records-display');
+    const displayRecords = document.getElementById('records-display');
+    const displayUsers = document.getElementById('users-display'); 
 
     if (user === ADMIN_USER && pass === ADMIN_PASS) {
         message.textContent = "登入成功！正在載入數據...";
         message.style.color = 'green';
-        display.classList.remove('hidden');
+        displayRecords.classList.remove('hidden');
+        displayUsers.classList.remove('hidden'); // 顯示建檔區塊
         fetchCheckInRecords(); 
+        fetchUserRecords(); // 載入建檔紀錄
     } else {
         message.textContent = "帳號或密碼錯誤。";
         message.style.color = 'red';
-        display.classList.add('hidden');
+        displayRecords.classList.add('hidden');
+        displayUsers.classList.add('hidden');
     }
 }
 
 
 /**
- * 從 Firestore 獲取所有打卡紀錄，並在後台顯示。
+ * ❗ 新增：從 Firestore 獲取所有學生建檔紀錄。
+ */
+export async function fetchUserRecords() {
+    const usersList = document.getElementById('users-list');
+    usersList.innerHTML = '<li>正在從雲端載入建檔數據...</li>';
+
+    try {
+        // 按學號排序
+        const q = query(usersCol, orderBy("studentId", "asc"));
+        const querySnapshot = await getDocs(q);
+
+        usersList.innerHTML = '';
+        
+        if (querySnapshot.empty) {
+            usersList.innerHTML = '<li>目前沒有任何學生建檔紀錄。</li>';
+            return;
+        }
+
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            
+            const listItem = document.createElement('li');
+            // 直接顯示密語 (password)
+            listItem.innerHTML = `
+                🆔 <strong>${data.studentId}</strong> | 
+                👤 ${data.name} (${data.className})
+                <br>
+                🔑 密語: <span style="color: #d9534f; font-weight: bold;">${data.password}</span>
+            `;
+            usersList.appendChild(listItem);
+        });
+
+    } catch (error) {
+        console.error("讀取建檔紀錄失敗: ", error);
+        usersList.innerHTML = '<li>讀取建檔數據時發生錯誤。</li>';
+    }
+}
+
+
+/**
+ * 從 Firestore 獲取所有打卡紀錄，並在後台顯示。(保持不變)
  */
 export async function fetchCheckInRecords() {
     const recordsList = document.getElementById('records-list');
     recordsList.innerHTML = '<li>正在從雲端載入所有數據...</li>';
 
     try {
-        // 查詢所有打卡紀錄，按時間戳記降序排列
         const q = query(checkinsCol, orderBy("timestamp", "desc"));
         const querySnapshot = await getDocs(q);
 
@@ -88,10 +134,8 @@ export async function fetchCheckInRecords() {
     }
 }
 
+// --- 刪除與匯出函數 (保持不變) ---
 
-/**
- * 刪除單筆打卡紀錄。
- */
 export async function deleteSingleCheckInRecord(docId) {
     if (!confirm("確定要刪除這筆打卡紀錄嗎？此操作不可復原。")) {
         return;
@@ -108,9 +152,6 @@ export async function deleteSingleCheckInRecord(docId) {
 }
 
 
-/**
- * 刪除所有打卡紀錄 (使用批次寫入)。
- */
 export async function deleteAllCheckInRecords() {
     if (!confirm("⚠️ 警告：您確定要刪除所有打卡紀錄嗎？此操作不可復原且影響巨大！")) {
         return;
@@ -140,64 +181,12 @@ export async function deleteAllCheckInRecords() {
     }
 }
 
-/**
- * 📥 將 Firestore 的打卡紀錄匯出為 CSV 檔案。
- */
+
 export async function exportCheckinsToCSV() {
     try {
-        // 1. 獲取所有紀錄
         const q = query(checkinsCol, orderBy("timestamp", "desc"));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
             alert("目前沒有任何打卡紀錄可以匯出。");
-            return;
-        }
-
-        // 2. 定義 CSV 標頭
-        let csv = "姓名,學號,班級,節次,打卡時間\n";
-        
-        // 3. 遍歷數據並格式化
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            
-            // 轉換 Firebase Timestamp 為可讀的字串
-            const timestamp = data.timestamp ? 
-                data.timestamp.toDate().toLocaleString('zh-TW', { timeZoneName: 'short' }) : 
-                'N/A';
-                
-            // 數據行，確保使用引號包裹時間，以避免逗號導致格式混亂
-            csv += `${data.name},${data.studentId},${data.className},${data.section},"${timestamp}"\n`;
-        });
-
-        // 4. 建立 Blob 對象並觸發下載
-        // \ufeff 是 BOM (Byte Order Mark)，確保 Excel 能正確識別 UTF-8 編碼的中文
-        const finalCsv = '\ufeff' + csv; 
-        const blob = new Blob([finalCsv], { type: 'text/csv;charset=utf-8;' });
-        
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        
-        const dateString = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        link.setAttribute("href", url);
-        link.setAttribute("download", `checkin_records_${dateString}.csv`);
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        alert(`成功匯出 ${querySnapshot.size} 筆打卡紀錄！`);
-
-    } catch (error) {
-        console.error("匯出 CSV 失敗: ", error);
-        alert("匯出 CSV 失敗：無法讀取資料庫。");
-    }
-}
-
-// 綁定到 window
-window.handleAdminLogin = handleAdminLogin;
-window.fetchCheckInRecords = fetchCheckInRecords;
-window.deleteSingleCheckInRecord = deleteSingleCheckInRecord;
-window.deleteAllCheckInRecords = deleteAllCheckInRecords;
-window.exportCheckinsToCSV = exportCheckinsToCSV;
-
+            return
