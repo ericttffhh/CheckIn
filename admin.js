@@ -1,19 +1,29 @@
-// 引入 Firebase SDK 模組
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-// 確保引入 getDoc，用於檢查建檔時學號重複
-import { getFirestore, collection, getDocs, query, orderBy, doc, deleteDoc, writeBatch, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+// 引入 Firebase SDK 模組 (已升級並統一版本 v10.12.2)
+import { 
+    initializeApp 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import { 
+    getFirestore, 
+    collection, 
+    getDocs, 
+    query, 
+    orderBy, 
+    doc, 
+    deleteDoc, 
+    writeBatch 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 
-// Your web app's Firebase configuration
+// ❗❗❗❗ 請將以下替換為您的 Firebase 專案配置 ❗❗❗❗
 const firebaseConfig = {
-  apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c",
-  authDomain: "classcheckinsystem.firebaseapp.com",
-  projectId: "classcheckinsystem",
-  storageBucket: "classcheckinsystem.firebasestorage.app",
-  messagingSenderId: "592387609788",
-  appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
+    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c", // 請確認這是否為您的金鑰
+    authDomain: "classcheckinsystem.firebaseapp.com",
+    projectId: "classcheckinsystem",
+    storageBucket: "classcheckinsystem.firebasestorage.app",
+    messagingSenderId: "592387609788",
+    appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
 };
-
 
 // 初始化 Firebase
 const app = initializeApp(firebaseConfig);
@@ -73,7 +83,7 @@ export async function fetchUserRecords() {
             const data = doc.data();
             
             const listItem = document.createElement('li');
-            // 直接顯示密語 (password)
+            // 顯示建檔資料，包括密語
             listItem.innerHTML = `
                 🆔 <strong>${data.studentId}</strong> | 
                 👤 ${data.name} (${data.className})
@@ -91,7 +101,7 @@ export async function fetchUserRecords() {
 
 
 /**
- * 從 Firestore 獲取所有打卡紀錄，並在後台顯示。(保持不變)
+ * 從 Firestore 獲取所有打卡紀錄，並在後台顯示。
  */
 export async function fetchCheckInRecords() {
     const recordsList = document.getElementById('records-list');
@@ -134,7 +144,7 @@ export async function fetchCheckInRecords() {
     }
 }
 
-// --- 刪除與匯出函數 (保持不變) ---
+// --- 刪除與匯出函數 ---
 
 export async function deleteSingleCheckInRecord(docId) {
     if (!confirm("確定要刪除這筆打卡紀錄嗎？此操作不可復原。")) {
@@ -201,7 +211,7 @@ export async function exportCheckinsToCSV() {
                 data.timestamp.toDate().toLocaleString('zh-TW', { timeZoneName: 'short' }) : 
                 'N/A';
                 
-            csv += `${data.name},${data.studentId},${data.className},${data.section},"${timestamp}"\n`;
+            csv += `${data.name},${data.studentId},${data.className},"${data.section}","${timestamp}"\n`; // 節次加上引號以防逗號分隔問題
         });
 
         const finalCsv = '\ufeff' + csv; 
