@@ -22,13 +22,13 @@ const checkinsCol = collection(db, "checkins"); // 打卡紀錄集合
 // 課程節次時間表 (保持不變)
 const SECTION_TIMES = [
     { hour: 8, minute: 10, name: "第 1 節 (08:10)" },
-    { hour: 9, minute: 0, name: "第 2 節 (09:00)" },
+    { hour: 9, minute: 10, name: "第 2 節 (09:00)" },
     { hour: 10, minute: 10, name: "第 3 節 (10:10)" },
-    { hour: 11, minute: 0, name: "第 4 節 (11:00)" },
+    { hour: 11, minute: 10, name: "第 4 節 (11:00)" },
     { hour: 12, minute: 0, name: "午休 (12:00)" },
-    { hour: 13, minute: 20, name: "第 5 節 (13:20)" },
+    { hour: 13, minute: 10, name: "第 5 節 (13:20)" },
     { hour: 14, minute: 10, name: "第 6 節 (14:10)" },
-    { hour: 15, minute: 20, name: "第 7 節 (15:20)" },
+    { hour: 15, minute: 10, name: "第 7 節 (15:20)" },
     { hour: 16, minute: 10, name: "第 8 節 (16:10)" },
     { hour: 17, minute: 0, name: "放學/課後 (17:00)" }
 ];
@@ -189,3 +189,4 @@ export function resetData() {
 window.checkPassword = checkPassword;
 // ❗❗ 移除 window.confirmUpload 綁定
 window.resetData = resetData;
+
