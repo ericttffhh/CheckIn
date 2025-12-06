@@ -19,7 +19,7 @@ const db = getFirestore(app);
 const studentsCol = collection(db, "users"); // 學生建檔資料集合
 const checkinsCol = collection(db, "checkins"); // 打卡紀錄集合
 
-// 課程節次時間表 (請依您的實際課程時間補齊)
+// 課程節次時間表 (保持不變)
 const SECTION_TIMES = [
     { hour: 8, minute: 10, name: "第 1 節 (08:10)" },
     { hour: 9, minute: 0, name: "第 2 節 (09:00)" },
@@ -33,13 +33,11 @@ const SECTION_TIMES = [
     { hour: 17, minute: 0, name: "放學/課後 (17:00)" }
 ];
 
-// --- 輔助函數 ---
+// --- 輔助函數 (保持不變) ---
 
 function getSectionByTime() {
     const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTimeInMinutes = currentHour * 60 + currentMinute;
+    const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
     
     let currentSection = "尚未開始上課";
     for (const section of SECTION_TIMES) {
@@ -91,18 +89,11 @@ function showSuccessStage(studentInfo) {
     document.getElementById('display-date').textContent = dateString; 
     document.getElementById('display-section').textContent = getSectionByTime();
     document.getElementById('display-timestamp').textContent = timeString; 
-
-    document.getElementById('upload-status').textContent = "本次打卡紀錄已自動傳送至雲端。";
-    document.getElementById('upload-status').style.color = 'green';
-    document.getElementById('upload-button').disabled = false;
 }
 
 
-// --- 核心邏輯函數 (個人密語綁定) ---
+// --- 核心邏輯函數 (保持不變) ---
 
-/**
- * 檢查通關密語：現在是查詢 Firebase 中是否有該密語綁定的使用者。
- */
 export async function checkPassword() {
     const passwordInput = document.getElementById('password-input').value;
     const errorDisplay = document.getElementById('password-error');
@@ -116,34 +107,27 @@ export async function checkPassword() {
         return;
     }
 
-    // 1. 根據輸入的密語，查詢 Firestore 中是否有匹配的用戶
-    // 注意：Firestore 的索引需要支持 'password' 欄位的查詢
     const q = query(studentsCol, where("password", "==", passwordInput));
     
     try {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            // 密語錯誤或未建檔
-            errorDisplay.textContent = "通關密語錯誤！若您是首次使用，請點擊「建檔」按鈕。";
+            errorDisplay.textContent = "通關密語錯誤！若您是首次使用，請在下方建立您的密語。";
             passwordStage.classList.remove('hidden');
-            document.getElementById('info-stage').classList.remove('hidden'); // 顯示建檔選項
+            document.getElementById('info-stage').classList.remove('hidden');
             return;
         }
 
-        // 2. 找到用戶，取得資料
         const studentDoc = querySnapshot.docs[0];
         const studentInfo = studentDoc.data();
         
-        // 3. 執行自動打卡並寫入 Firestore
         const success = await recordCheckIn(studentInfo); 
         
         if (success) {
-            errorDisplay.textContent = ''; // 清除錯誤訊息
-            // 4. 打卡成功，顯示成功頁面
+            errorDisplay.textContent = '';
             showSuccessStage(studentInfo);
         } else {
-            // 寫入失敗
             errorDisplay.textContent = "打卡失敗，無法寫入資料庫！";
             passwordStage.classList.remove('hidden');
         }
@@ -156,9 +140,6 @@ export async function checkPassword() {
 }
 
 
-/**
- * 處理學生資料表單提交 (建檔)：將專屬密語和資料一起寫入 Firestore。
- */
 document.getElementById('info-form').addEventListener('submit', async function(e) {
     e.preventDefault(); 
 
@@ -173,21 +154,15 @@ document.getElementById('info-form').addEventListener('submit', async function(e
     }
     
     const studentInfo = { 
-        password: personalPassword, // ❗ 綁定的專屬密語
+        password: personalPassword, 
         className: className, 
         name: name, 
         studentId: studentId 
     };
     
-    // 將資料存入 Firestore (以學號為文件ID)
     try {
-        // 使用 setDoc 而非 addDoc，確保學號是唯一的文件 ID
         await setDoc(doc(db, "users", studentId), studentInfo);
-        
-        // 立即執行打卡動作並寫入紀錄
         await recordCheckIn(studentInfo);
-        
-        // 顯示打卡成功畫面
         showSuccessStage(studentInfo);
     } catch (error) {
         console.error("建檔或打卡寫入失敗: ", error);
@@ -197,28 +172,20 @@ document.getElementById('info-form').addEventListener('submit', async function(e
 
 
 /**
- * 確認資料已即時上傳。
+ * ❗❗ 刪除 'confirmUpload' 函數，因為它已不再有對應按鈕。
  */
-export function confirmUpload() {
-    const uploadStatus = document.getElementById('upload-status');
-    uploadStatus.textContent = `✅ 紀錄已即時傳送至雲端 (無需重複操作)。`;
-    uploadStatus.style.color = 'green';
-}
-
 
 /**
- * 清除本地快取資料。
+ * 清除本地快取資料並返回打卡介面 (重載頁面)。
  */
 export function resetData() {
-    if (confirm("確定要清除瀏覽器中的資料嗎？ (此功能僅為模擬，不會影響雲端建檔)")) {
-        localStorage.clear();
-        alert("本地資料已清除。請刷新頁面重新開始。");
-        window.location.reload();
-    }
+    // 清除本地儲存，確保完全重置狀態
+    localStorage.clear();
+    // 重載頁面，回到初始密碼輸入畫面
+    window.location.reload();
 }
 
-// 綁定到 window (因為使用了 type="module")
+// 綁定到 window 
 window.checkPassword = checkPassword;
-window.confirmUpload = confirmUpload;
+// ❗❗ 移除 window.confirmUpload 綁定
 window.resetData = resetData;
-
