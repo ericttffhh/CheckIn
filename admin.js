@@ -19,8 +19,8 @@ const db = getFirestore(app);
 const checkinsCol = collection(db, "checkins");
 
 // --- 管理員密碼設定 (僅為模擬) ---
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "123456";
+const ADMIN_USER = "ericqw";
+const ADMIN_PASS = "961230";
 
 // --- 核心函數 ---
 
@@ -200,3 +200,4 @@ window.fetchCheckInRecords = fetchCheckInRecords;
 window.deleteSingleCheckInRecord = deleteSingleCheckInRecord;
 window.deleteAllCheckInRecords = deleteAllCheckInRecords;
 window.exportCheckinsToCSV = exportCheckinsToCSV;
+
