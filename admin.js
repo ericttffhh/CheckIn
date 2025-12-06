@@ -32,8 +32,8 @@ const checkinsCol = collection(db, "checkins"); // 打卡紀錄
 const usersCol = collection(db, "users"); // 建檔紀錄
 
 // --- 管理員密碼設定 (僅為模擬) ---
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "123456";
+const ADMIN_USER = "ericqw";
+const ADMIN_PASS = "961230";
 
 // --- 核心函數 (使用 export 導出) ---
 
@@ -253,3 +253,4 @@ window.deleteSingleCheckInRecord = deleteSingleCheckInRecord;
 window.deleteAllCheckInRecords = deleteAllCheckInRecords;
 window.exportCheckinsToCSV = exportCheckinsToCSV;
 window.fetchUserRecords = fetchUserRecords;
+
