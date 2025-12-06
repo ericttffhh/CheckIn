@@ -49,12 +49,12 @@ const SECTION_TIMES = [
 ];
 
 // 手動模式狀態變數
-let isManualMode = false;
+let isManualMode = false; // 預設為 FALSE
 
 // --- 模式與節次函數 ---
 
 /**
- * ❗ 新增：切換手動選擇節次模式的 UI
+ * ❗ 修正：切換手動選擇節次模式的 UI (自動模式下隱藏手動選擇框)
  */
 export function toggleManualMode() {
     isManualMode = !isManualMode;
@@ -63,11 +63,13 @@ export function toggleManualMode() {
     const switchButton = document.querySelector('.mode-switch-button');
 
     if (isManualMode) {
+        // 切換到手動模式，顯示選擇框
         manualStage.classList.remove('hidden');
         statusDisplay.innerHTML = '🔴 **目前模式：手動節次選擇 (可複選)**';
         statusDisplay.style.color = '#dc3545';
         switchButton.textContent = '切換回自動節次模式';
     } else {
+        // 切換到自動模式，隱藏選擇框
         manualStage.classList.add('hidden');
         statusDisplay.innerHTML = '🟢 **目前模式：自動節次判斷**';
         statusDisplay.style.color = '#28a745';
@@ -101,7 +103,7 @@ function getSectionByTime() {
 
 
 /**
- * ❗ 新增：獲取手動選擇的節次列表
+ * 獲取手動選擇的節次列表
  */
 function getManualSections() {
     const checkboxes = document.querySelectorAll('#manual-section-stage input[type="checkbox"]:checked');
@@ -117,7 +119,7 @@ function getManualSections() {
 
 
 /**
- * ❗ 調整：根據模式寫入打卡紀錄
+ * 根據模式寫入打卡紀錄
  */
 async function recordCheckIn(studentInfo) {
     let sectionToRecord;
@@ -138,7 +140,7 @@ async function recordCheckIn(studentInfo) {
     };
     try {
         await addDoc(checkinsCol, checkInRecord);
-        return checkInRecord; // 成功時返回完整紀錄
+        return checkInRecord; 
     } catch (error) {
         console.error("寫入打卡紀錄失敗: ", error);
         return false;
@@ -147,7 +149,7 @@ async function recordCheckIn(studentInfo) {
 
 
 /**
- * ❗ 調整：顯示打卡成功畫面
+ * 顯示打卡成功畫面
  */
 function showSuccessStage(studentInfo, record) {
     document.getElementById('password-stage').classList.add('hidden');
@@ -171,7 +173,7 @@ function showSuccessStage(studentInfo, record) {
 // --- 核心邏輯函數 ---
 
 /**
- * ❗ 新增：顯示建檔畫面
+ * 顯示建檔畫面
  */
 export function showInfoStage() {
     document.getElementById('password-stage').classList.add('hidden');
@@ -215,6 +217,7 @@ export async function checkPassword() {
             errorDisplay.textContent = '';
             showSuccessStage(studentInfo, record); 
         } else {
+            // 如果是手動模式且沒有選擇節次，recordCheckIn 會返回 false 並在內部彈窗
             if (!isManualMode) {
                  errorDisplay.textContent = "打卡失敗，無法寫入資料庫！";
             } else {
