@@ -3,71 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>學生會線上打卡系統 (Firebase)</title>
+    <title>學生會線上打卡系統</title>
     <style>
         /* 基礎樣式 */
         .container {
-            max-width: 550px; margin: 30px auto; padding: 20px; text-align: center; border: 1px solid #ccc; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 550px; margin: 30px auto; padding: 20px; text-align: center; border: 1px solid #ccc; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); background-color: #fff;
         }
         input[type="password"], input[type="text"] {
-            width: calc(100% - 20px); padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;
+            width: calc(100% - 20px); padding: 12px; margin: 10px 0; border: 1px solid #aaa; border-radius: 5px; box-sizing: border-box; font-size: 16px;
         }
         button {
-            background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; box-sizing: border-box; margin-top: 10px;
+            background-color: #007bff; color: white; padding: 12px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 17px; width: 100%; box-sizing: border-box; margin-top: 10px; transition: background-color 0.3s;
         }
-        .stage { margin-bottom: 20px; padding: 15px; border: 1px dashed #ddd; }
+        .stage { margin-bottom: 25px; padding: 20px; border: 1px dashed #ddd; border-radius: 8px; background-color: #fafafa; }
         .hidden { display: none; }
-        .error-message { color: red; margin-top: 10px; }
-        .result-box { background-color: #e9ecef; padding: 15px; border-radius: 8px; text-align: left; margin-top: 15px; }
+        .error-message { color: red; margin-top: 15px; font-weight: bold; }
+        .result-box { background-color: #e9ecef; padding: 20px; border-radius: 8px; text-align: left; margin-top: 20px; border-left: 5px solid #28a745; }
         .highlight { color: #d9534f; font-weight: bold; }
         
         /* 控制按鈕區 */
-        .password-controls { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+        .password-controls-row { display: flex; gap: 1%; margin-top: 15px; }
+        .password-controls-row button { width: 49%; margin: 0; }
+        .mode-switch-button { background-color: #17a2b8 !important; } 
         .admin-button { background-color: #6c757d !important; }
         .new-user-button { background-color: #ffc107; color: #333; margin-top: 15px; } 
 
-        /* 新增：模式切換與節次選擇區 */
-        .password-controls-row { 
-            display: flex; gap: 1%; margin-top: 15px; 
-        }
-        .password-controls-row button {
-             width: 49%; margin: 0;
-        }
-        .mode-switch-button { background-color: #17a2b8 !important; } 
-        
+        /* 手動節次選擇區塊 */
         .section-selector {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 8px;
-            padding: 10px;
+            padding: 15px;
             background-color: #f0f0f0;
             border-radius: 5px;
             margin-top: 15px;
             text-align: left;
+            border: 1px solid #ddd;
         }
         .section-selector label {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            padding: 5px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            transition: background-color 0.2s;
-            font-size: 0.9em;
+            display: flex; align-items: center; cursor: pointer; padding: 8px; border: 1px solid #ccc; border-radius: 4px; transition: background-color 0.2s; font-size: 0.9em;
         }
         .section-selector label:hover { background-color: #e2e2e2; }
-        .section-selector input[type="checkbox"]:checked + span {
-            font-weight: bold; color: #007bff;
-        }
+        .section-selector input[type="checkbox"] { margin-right: 8px; width: auto; }
+        .section-selector input[type="checkbox"]:checked + span { font-weight: bold; color: #007bff;}
 
         /* 版權資訊樣式 */
         .footer-copyright {
-            position: fixed;
-            bottom: 5px;
-            right: 10px;
-            font-size: 12px;
-            color: #ccc;
-            opacity: 0.7;
+            position: fixed; bottom: 5px; right: 10px; font-size: 12px; color: #ccc; opacity: 0.7;
         }
     </style>
 </head>
