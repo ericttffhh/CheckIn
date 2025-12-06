@@ -46,23 +46,26 @@
             <p id="password-error" class="error-message"></p>
         </div>
 
-        <div id="info-stage" class="stage hidden">
-            <h2>📝 首次使用：填寫個人資料 (建檔)</h2>
-            <form id="info-form">
-                <p class="instruction-text">資料將永久儲存在 **Firebase** 資料庫中。</p>
-                
-                <label for="class-input">班級：</label>
-                <input type="text" id="class-input" required placeholder="例如：資訊一甲">
+<div id="info-stage" class="stage hidden">
+    <h2>📝 首次使用：建立專屬密語並建檔</h2>
+    <form id="info-form">
+        <p class="instruction-text">請建立您的專屬通關密語，並填寫資料。密語將綁定您的身份。</p>
 
-                <label for="name-input">姓名：</label>
-                <input type="text" id="name-input" required placeholder="例如：王小明">
+        <label for="personal-password-input">建立您的密語：</label>
+        <input type="password" id="personal-password-input" required placeholder="設定 6 位數以上的密語">
 
-                <label for="student-id-input">學號：</label>
-                <input type="text" id="student-id-input" required placeholder="例如：A12345678">
+        <label for="class-input">班級：</label>
+        <input type="text" id="class-input" required placeholder="例如：資訊一甲">
 
-                <button type="submit">✅ 完成建檔並打卡</button>
-            </form>
-        </div>
+        <label for="name-input">姓名：</label>
+        <input type="text" id="name-input" required placeholder="例如：王小明">
+
+        <label for="student-id-input">學號：</label>
+        <input type="text" id="student-id-input" required placeholder="例如：A12345678">
+
+        <button type="submit">✅ 完成建檔並打卡</button>
+    </form>
+</div>
 
         <div id="success-stage" class="stage hidden">
             <h2>✅ 打卡成功！</h2>
@@ -85,4 +88,5 @@
 
     <script src="script.js" type="module"></script>
 </body>
+
 </html>
