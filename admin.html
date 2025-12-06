@@ -9,40 +9,22 @@
         .container { max-width: 800px; padding: 30px; }
         h1 { color: #28a745; border-color: #28a745; }
         .login-box { 
-            padding: 20px; 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
-            margin-bottom: 20px;
-            background-color: #f8f9fa;
+            padding: 20px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 20px; background-color: #f8f9fa;
         }
         .login-box button { background-color: #28a745; margin-top: 20px; }
-        .login-box button:hover { background-color: #1e7e34; }
         .records-container {
-            margin-top: 30px;
-            border-top: 2px solid #28a745;
-            padding-top: 20px;
+            margin-top: 30px; border-top: 2px solid #28a745; padding-top: 20px;
         }
         #records-list {
-            list-style: none;
-            padding: 0;
-            text-align: left;
+            list-style: none; padding: 0; text-align: left;
         }
         #records-list li {
-            background-color: #fff;
-            padding: 10px;
-            border-bottom: 1px dashed #ddd;
-            margin-bottom: 8px;
-            border-left: 5px solid #007bff;
-            font-size: 0.95em;
-        }
-        #records-list li:last-child {
-            border-bottom: none;
+            background-color: #fff; padding: 10px; border-bottom: 1px dashed #ddd; margin-bottom: 8px; border-left: 5px solid #007bff; font-size: 0.95em;
         }
         .record-header {
-            font-weight: bold;
-            color: #d9534f;
-            margin-right: 15px;
+            font-weight: bold; color: #d9534f; margin-right: 15px;
         }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -51,7 +33,7 @@
         <h1>🧑‍💻 後台管理員登入</h1>
         
         <div class="login-box">
-            <h2>管理員登入</h2>
+            <h2>管理員登入 (模擬)</h2>
             <label for="admin-user">帳號：</label>
             <input type="text" id="admin-user" placeholder="輸入管理員帳號 (例如: admin)">
             
