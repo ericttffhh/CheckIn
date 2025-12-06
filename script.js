@@ -36,15 +36,15 @@ const checkinsCol = collection(db, "checkins"); // 打卡紀錄集合
 
 // 課程節次時間表 (用於自動判斷)
 const SECTION_TIMES = [
-    { hour: 8, minute: 10, name: "第 1 節 (08:10)" },
-    { hour: 9, minute: 0, name: "第 2 節 (09:00)" },
-    { hour: 10, minute: 10, name: "第 3 節 (10:10)" },
-    { hour: 11, minute: 0, name: "第 4 節 (11:00)" },
-    { hour: 12, minute: 0, name: "午休 (12:00)" },
-    { hour: 13, minute: 10, name: "第 5 節 (13:20)" },
-    { hour: 14, minute: 10, name: "第 6 節 (14:10)" },
-    { hour: 15, minute: 10, name: "第 7 節 (15:20)" },
-    { hour: 16, minute: 10, name: "第 8 節 (16:10)" },
+    { hour: 8, minute: 10, name: "第 1 節 " },
+    { hour: 9, minute: 0, name: "第 2 節 " },
+    { hour: 10, minute: 10, name: "第 3 節 " },
+    { hour: 11, minute: 0, name: "第 4 節 " },
+    { hour: 12, minute: 0, name: "午休 " },
+    { hour: 13, minute: 10, name: "第 5 節 " },
+    { hour: 14, minute: 10, name: "第 6 節 " },
+    { hour: 15, minute: 10, name: "第 7 節 " },
+    { hour: 16, minute: 10, name: "第 8 節 " },
     { hour: 17, minute: 0, name: "放學/課後 (17:00)" }
 ];
 
@@ -315,3 +315,4 @@ window.checkPassword = checkPassword;
 window.resetData = resetData;
 window.showInfoStage = showInfoStage;
 window.toggleManualMode = toggleManualMode;
+
