@@ -29,11 +29,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const checkinsCol = collection(db, "checkins"); // 打卡紀錄
-const usersCol = collection(db, "users"); // ❗ 建檔紀錄
+const usersCol = collection(db, "users"); // 建檔紀錄
 
 // --- 管理員密碼設定 (僅為模擬) ---
-const ADMIN_USER = "ericqw";
-const ADMIN_PASS = "961230";
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "123456";
 
 // --- 核心函數 ---
 
@@ -48,9 +48,9 @@ export function handleAdminLogin() {
         message.textContent = "登入成功！正在載入數據...";
         message.style.color = 'green';
         displayRecords.classList.remove('hidden');
-        displayUsers.classList.remove('hidden'); // 顯示建檔區塊
+        displayUsers.classList.remove('hidden'); 
         fetchCheckInRecords(); 
-        fetchUserRecords(); // 載入建檔紀錄
+        fetchUserRecords(); 
     } else {
         message.textContent = "帳號或密碼錯誤。";
         message.style.color = 'red';
@@ -61,14 +61,13 @@ export function handleAdminLogin() {
 
 
 /**
- * ❗ 新增：從 Firestore 獲取所有學生建檔紀錄。
+ * 從 Firestore 獲取所有學生建檔紀錄。
  */
 export async function fetchUserRecords() {
     const usersList = document.getElementById('users-list');
     usersList.innerHTML = '<li>正在從雲端載入建檔數據...</li>';
 
     try {
-        // 按學號排序
         const q = query(usersCol, orderBy("studentId", "asc"));
         const querySnapshot = await getDocs(q);
 
@@ -83,7 +82,6 @@ export async function fetchUserRecords() {
             const data = doc.data();
             
             const listItem = document.createElement('li');
-            // 顯示建檔資料，包括密語
             listItem.innerHTML = `
                 🆔 <strong>${data.studentId}</strong> | 
                 👤 ${data.name} (${data.className})
