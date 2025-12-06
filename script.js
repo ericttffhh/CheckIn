@@ -1,26 +1,25 @@
-// 引入 Firebase SDK 模組 (保持不變)
+// 引入 Firebase SDK 模組
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getFirestore, collection, doc, getDoc, setDoc, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 
-// ❗❗❗❗ Firebase 專案配置 ❗❗❗❗
+// ❗❗❗❗ 請將以下替換為您的 Firebase 專案配置 ❗❗❗❗
 const firebaseConfig = {
-    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c",
-    authDomain: "classcheckinsystem.firebaseapp.com",
-    projectId: "classcheckinsystem",
-    storageBucket: "classcheckinsystem.firebasestorage.app",
-    messagingSenderId: "592387609788",
-    appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
+    apiKey: "YOUR_API_KEY", // <--- 請替換這裡
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
 };
 
 // 初始化 Firebase 應用程式和 Firestore
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-// ⚠️ 學生資料集合名稱改為 'users' 以避免與密碼查詢衝突，但仍以學號為 ID 存入。
-const studentsCol = collection(db, "users"); 
-const checkinsCol = collection(db, "checkins"); 
+const studentsCol = collection(db, "users"); // 學生建檔資料集合
+const checkinsCol = collection(db, "checkins"); // 打卡紀錄集合
 
-// 課程節次時間表 (保持不變)
+// 課程節次時間表 (請依您的實際課程時間補齊)
 const SECTION_TIMES = [
     { hour: 8, minute: 10, name: "第 1 節 (08:10)" },
     { hour: 9, minute: 0, name: "第 2 節 (09:00)" },
@@ -34,10 +33,9 @@ const SECTION_TIMES = [
     { hour: 17, minute: 0, name: "放學/課後 (17:00)" }
 ];
 
-// --- 輔助函數 (getSectionByTime, recordCheckIn, showSuccessStage 邏輯與前一版類似，但 checkPassword 需大改) ---
+// --- 輔助函數 ---
 
 function getSectionByTime() {
-    // (邏輯保持不變，省略細節)
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
@@ -100,7 +98,7 @@ function showSuccessStage(studentInfo) {
 }
 
 
-// --- 核心邏輯函數 (重大修改處) ---
+// --- 核心邏輯函數 (個人密語綁定) ---
 
 /**
  * 檢查通關密語：現在是查詢 Firebase 中是否有該密語綁定的使用者。
@@ -119,6 +117,7 @@ export async function checkPassword() {
     }
 
     // 1. 根據輸入的密語，查詢 Firestore 中是否有匹配的用戶
+    // 注意：Firestore 的索引需要支持 'password' 欄位的查詢
     const q = query(studentsCol, where("password", "==", passwordInput));
     
     try {
@@ -126,12 +125,13 @@ export async function checkPassword() {
         
         if (querySnapshot.empty) {
             // 密語錯誤或未建檔
-            errorDisplay.textContent = "通關密語錯誤或尚未建檔！";
+            errorDisplay.textContent = "通關密語錯誤！若您是首次使用，請點擊「建檔」按鈕。";
             passwordStage.classList.remove('hidden');
+            document.getElementById('info-stage').classList.remove('hidden'); // 顯示建檔選項
             return;
         }
 
-        // 2. 找到用戶，取得資料 (應該只有一個結果)
+        // 2. 找到用戶，取得資料
         const studentDoc = querySnapshot.docs[0];
         const studentInfo = studentDoc.data();
         
@@ -139,6 +139,7 @@ export async function checkPassword() {
         const success = await recordCheckIn(studentInfo); 
         
         if (success) {
+            errorDisplay.textContent = ''; // 清除錯誤訊息
             // 4. 打卡成功，顯示成功頁面
             showSuccessStage(studentInfo);
         } else {
@@ -180,6 +181,7 @@ document.getElementById('info-form').addEventListener('submit', async function(e
     
     // 將資料存入 Firestore (以學號為文件ID)
     try {
+        // 使用 setDoc 而非 addDoc，確保學號是唯一的文件 ID
         await setDoc(doc(db, "users", studentId), studentInfo);
         
         // 立即執行打卡動作並寫入紀錄
@@ -205,18 +207,17 @@ export function confirmUpload() {
 
 
 /**
- * 清除本地快取資料。 (此功能用於模擬重設，實際應用中不需要)
+ * 清除本地快取資料。
  */
 export function resetData() {
     if (confirm("確定要清除瀏覽器中的資料嗎？ (此功能僅為模擬，不會影響雲端建檔)")) {
-        // 清除本地儲存
         localStorage.clear();
         alert("本地資料已清除。請刷新頁面重新開始。");
         window.location.reload();
     }
 }
 
-// 綁定到 window
+// 綁定到 window (因為使用了 type="module")
 window.checkPassword = checkPassword;
 window.confirmUpload = confirmUpload;
 window.resetData = resetData;
