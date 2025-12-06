@@ -3,51 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>公假後台管理系統</title>
-    <link rel="stylesheet" href="style.css">
+    <title>後台管理系統</title>
     <style>
-        .container { max-width: 900px; padding: 30px; } /* 稍微加大容器 */
+        .container { max-width: 900px; margin: 30px auto; padding: 30px; border: 1px solid #ccc; border-radius: 10px; }
         h1 { color: #28a745; border-color: #28a745; }
-        .login-box { 
-            padding: 20px; 
-            border: 1px solid #ccc; 
-            border-radius: 8px; 
-            margin-bottom: 20px;
-            background-color: #f8f9fa;
-        }
-        .records-container {
+        .login-box { padding: 20px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 20px; background-color: #f8f9fa; }
+        .records-container, .users-container {
             margin-top: 30px;
-            border-top: 2px solid #28a745;
             padding-top: 20px;
+            border-top: 2px solid;
         }
-        .users-container { /* 新增建檔紀錄區樣式 */
-            margin-top: 30px;
-            border-top: 2px solid #007bff; /* 使用不同的顏色區分 */
-            padding-top: 20px;
-        }
-        #records-list, #users-list {
-            list-style: none; padding: 0; text-align: left;
-        }
-        #records-list li {
-            background-color: #fff; padding: 10px; border-bottom: 1px dashed #ddd; margin-bottom: 8px; border-left: 5px solid #007bff; font-size: 0.95em; overflow: hidden; 
-        }
-        #users-list li {
-            background-color: #fff; padding: 10px; border-bottom: 1px dashed #ddd; margin-bottom: 8px; border-left: 5px solid #ffc107; font-size: 0.95em; overflow: hidden; 
-        }
-        .record-header {
-            font-weight: bold; color: #d9534f; margin-right: 15px;
-        }
-        .delete-btn {
-            background-color: #d9534f; 
-            float: right; 
-            padding: 5px 10px; 
-            font-size: 0.8em; 
-            width: auto;
-            margin-left: 10px; 
-        }
+        .records-container { border-color: #007bff; }
+        .users-container { border-color: #ffc107; }
+
+        #records-list, #users-list { list-style: none; padding: 0; text-align: left; }
+        #records-list li { background-color: #fff; padding: 10px; border-bottom: 1px dashed #ddd; margin-bottom: 8px; border-left: 5px solid #007bff; font-size: 0.95em; }
+        #users-list li { background-color: #fff; padding: 10px; border-bottom: 1px dashed #ddd; margin-bottom: 8px; border-left: 5px solid #ffc107; font-size: 0.95em; }
+
+        .record-header { font-weight: bold; color: #d9534f; margin-right: 15px; }
+        .delete-btn { background-color: #d9534f; float: right; padding: 5px 10px; font-size: 0.8em; width: auto; margin-left: 10px; }
         .delete-all-btn { background-color: #d9534f !important; margin-bottom: 15px; }
         .export-btn { background-color: #0099cc; margin-bottom: 15px; }
         .hidden { display: none; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 10px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -74,25 +52,23 @@
             <button onclick="exportCheckinsToCSV()" class="export-btn">📥 匯出 CSV 檔案</button>
             <button onclick="deleteAllCheckInRecords()" class="delete-all-btn">❌ 刪除所有打卡紀錄 (不可復原)</button>
 
-            <ul id="records-list">
-                </ul>
+            <ul id="records-list"></ul>
             <button onclick="fetchCheckInRecords()">🔄 重新整理打卡紀錄</button>
         </div>
 
         <div id="users-display" class="users-container hidden">
-            <h2>👥 人員建檔紀錄 (Users)</h2>
+            <h2>👥人員建檔紀錄 (Users)</h2>
             <p>已建檔的人員列表 (密語儲存處)：</p>
             
-            <ul id="users-list">
-                </ul>
+            <ul id="users-list"></ul>
             <button onclick="fetchUserRecords()" style="background-color: #ffc107; color: #333;">🔄 重新整理建檔紀錄</button>
         </div>
 
         <a href="index.html"><button style="background-color: #6c757d; margin-top: 25px;">返回打卡頁面</button></a>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
 
     <script src="admin.js" type="module"></script>
 </body>
