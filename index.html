@@ -3,27 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>課程線上打卡系統 (Firebase)</title>
+    <title>線上打卡系統 (Firebase)</title>
     <link rel="stylesheet" href="style.css"> 
     <style>
-        /* 新增樣式，讓兩個按鈕可以並排或更清晰 */
-        .password-controls {
-            display: flex;
-            flex-direction: column; 
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .admin-button {
-            background-color: #6c757d !important;
-        }
-        @media (min-width: 600px) {
-            .password-controls {
-                flex-direction: row;
-            }
-            .password-controls button {
-                width: 50%;
-            }
-        }
         /* 基本樣式定義 (如果 style.css 不存在，可使用以下) */
         .container {
             max-width: 500px; margin: 50px auto; padding: 20px; text-align: center; border: 1px solid #ccc; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -31,14 +13,20 @@
         input[type="password"], input[type="text"] {
             width: calc(100% - 20px); padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;
         }
-        button, .admin-button a button {
-            background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; box-sizing: border-box;
+        button {
+            background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; box-sizing: border-box; margin-top: 10px;
         }
         .stage { margin-bottom: 20px; padding: 15px; border: 1px dashed #ddd; }
         .hidden { display: none; }
         .error-message { color: red; margin-top: 10px; }
         .result-box { background-color: #e9ecef; padding: 15px; border-radius: 8px; text-align: left; margin-top: 15px; }
         .highlight { color: #d9534f; font-weight: bold; }
+        .password-controls { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+        .admin-button { background-color: #6c757d !important; }
+        @media (min-width: 600px) {
+            .password-controls { flex-direction: row; }
+            .password-controls a { flex-grow: 1; }
+        }
     </style>
 </head>
 <body>
@@ -93,11 +81,9 @@
                 <p><small>打卡時間: <span id="display-timestamp"></span></small></p>
             </div>
             
-            <button id="upload-button" onclick="confirmUpload()">🔥 紀錄已即時儲存至雲端</button>
-            <p id="upload-status" class="error-message"></p>
+            <p id="upload-status" style="color: green; margin-top: 15px;">🔥 紀錄已即時傳送至雲端。</p>
             
-            <hr>
-            <button onclick="resetData()">🗑️ 清除本地快取資料 (模擬換人)</button>
+            <button onclick="resetData()" style="background-color: #007bff; margin-top: 15px;">⬅️ 返回打卡介面</button>
         </div>
     </div>
 
