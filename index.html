@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>課程線上打卡系統 (Firebase)</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* 新增樣式，讓兩個按鈕可以並排或更清晰 */
+        .password-controls {
+            display: flex;
+            flex-direction: column; 
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .admin-button {
+            background-color: #6c757d !important;
+        }
+        @media (min-width: 600px) {
+            .password-controls {
+                flex-direction: row;
+            }
+            .password-controls button {
+                width: 50%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>線上打卡系統 (雲端)</h1>
+
+        <div id="password-stage" class="stage">
+            <h2>🔑 請輸入通關密語</h2>
+            <input type="password" id="password-input" placeholder="輸入密語...">
+            
+            <div class="password-controls">
+                <button onclick="checkPassword()">確認密語並打卡</button>
+                
+                <a href="admin.html" target="_blank" style="text-decoration: none; width: 100%;">
+                    <button class="admin-button">我是管理員 💻</button>
+                </a>
+            </div>
+            
+            <p id="password-error" class="error-message"></p>
+        </div>
+
+        <div id="info-stage" class="stage hidden">
+            <h2>📝 首次使用：填寫個人資料 (建檔)</h2>
+            <form id="info-form">
+                <p class="instruction-text">資料將永久儲存在 **Firebase** 資料庫中。</p>
+                
+                <label for="class-input">班級：</label>
+                <input type="text" id="class-input" required placeholder="例如：資訊一甲">
+
+                <label for="name-input">姓名：</label>
+                <input type="text" id="name-input" required placeholder="例如：王小明">
+
+                <label for="student-id-input">學號：</label>
+                <input type="text" id="student-id-input" required placeholder="例如：A12345678">
+
+                <button type="submit">✅ 完成建檔並打卡</button>
+            </form>
+        </div>
+
+        <div id="success-stage" class="stage hidden">
+            <h2>✅ 打卡成功！</h2>
+            <div class="result-box">
+                <p><strong>班級:</strong> <span id="display-class"></span></p>
+                <p><strong>姓名:</strong> <span id="display-name"></span></p>
+                <p><strong>學號:</strong> <span id="display-student-id"></span></p>
+                <p class="highlight"><strong>🗓️ 打卡日期:</strong> <span id="display-date"></span></p>
+                <p class="highlight"><strong>⏰ 本次節次:</strong> <span id="display-section"></span></p>
+                <p><small>打卡時間: <span id="display-timestamp"></span></small></p>
+            </div>
+            
+            <button id="upload-button" onclick="confirmUpload()">🔥 紀錄已即時儲存至雲端</button>
+            <p id="upload-status" class="error-message"></p>
+            
+            <hr>
+            <button onclick="resetData()">🗑️ 清除本地快取資料 (模擬換人)</button>
+        </div>
+    </div>
+
+    <script src="script.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>後台管理系統</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .container { max-width: 400px; padding: 30px; }
+        h1 { color: #28a745; border-color: #28a745; }
+        .login-box { padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        .login-box button { background-color: #28a745; margin-top: 20px; }
+        .login-box button:hover { background-color: #1e7e34; }
+        .note { margin-top: 20px; color: #555; text-align: left;}
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🧑‍💻 後台管理員登入</h1>
+        
+        <div class="login-box">
+            <label for="admin-user">帳號：</label>
+            <input type="text" id="admin-user" placeholder="輸入管理員帳號">
+            
+            <label for="admin-pass">密碼：</label>
+            <input type="password" id="admin-pass" placeholder="輸入密碼">
+            
+            <button onclick="alert('登入成功 (此為模擬)')">登入</button>
+        </div>
+
+        <p class="note">
+            **⚠️ 注意：** 此頁面僅為後台登入的**模擬**。實際的打卡資料需要透過伺服器和資料庫來儲存和檢視。
+        </p>
+        <a href="index.html"><button style="background-color: #6c757d; margin-top: 15px;">返回打卡頁面</button></a>
+    </div>
+</body>
+</html>
