@@ -164,7 +164,9 @@ export async function exportCheckinsToCSV() {
 }
 
 
-// 綁定到 window (略)
+// admin.js 文件末尾...
+
+// 綁定到 window，使 HTML 中的 onclick 可以調用
 window.handleAdminLogin = handleAdminLogin;
 window.fetchCheckInRecords = fetchCheckInRecords;
 window.deleteSingleCheckInRecord = deleteSingleCheckInRecord;
