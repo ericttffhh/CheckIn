@@ -13,6 +13,7 @@ const firebaseConfig = {
   appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
 };
 
+
 // 初始化 Firebase 應用程式和 Firestore
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -22,9 +23,9 @@ const checkinsCol = collection(db, "checkins"); // 打卡紀錄集合
 // 課程節次時間表 (保持不變)
 const SECTION_TIMES = [
     { hour: 8, minute: 10, name: "第 1 節 (08:10)" },
-    { hour: 9, minute: 10, name: "第 2 節 (09:00)" },
+    { hour: 9, minute: 0, name: "第 2 節 (09:00)" },
     { hour: 10, minute: 10, name: "第 3 節 (10:10)" },
-    { hour: 11, minute: 10, name: "第 4 節 (11:00)" },
+    { hour: 11, minute: 0, name: "第 4 節 (11:00)" },
     { hour: 12, minute: 0, name: "午休 (12:00)" },
     { hour: 13, minute: 10, name: "第 5 節 (13:20)" },
     { hour: 14, minute: 10, name: "第 6 節 (14:10)" },
@@ -34,7 +35,6 @@ const SECTION_TIMES = [
 ];
 
 // --- 輔助函數 (保持不變) ---
-
 function getSectionByTime() {
     const now = new Date();
     const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
@@ -92,8 +92,20 @@ function showSuccessStage(studentInfo) {
 }
 
 
-// --- 核心邏輯函數 (保持不變) ---
+// --- 核心邏輯函數 ---
 
+/**
+ * ❗ 新增：顯示建檔畫面 
+ */
+export function showInfoStage() {
+    document.getElementById('password-stage').classList.add('hidden');
+    document.getElementById('info-stage').classList.remove('hidden');
+    document.getElementById('password-error').textContent = ''; // 清除錯誤訊息
+}
+
+/**
+ * 檢查通關密語：現在是查詢 Firebase 中是否有該密語綁定的使用者。
+ */
 export async function checkPassword() {
     const passwordInput = document.getElementById('password-input').value;
     const errorDisplay = document.getElementById('password-error');
@@ -113,9 +125,9 @@ export async function checkPassword() {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            errorDisplay.textContent = "通關密語錯誤！若您是首次使用，請在下方建立您的密語。";
+            // 密語錯誤，只顯示錯誤訊息，提示點擊建檔按鈕
+            errorDisplay.textContent = "通關密語錯誤！若您是首次使用，請點擊「我是第一次用！我要建檔」。";
             passwordStage.classList.remove('hidden');
-            document.getElementById('info-stage').classList.remove('hidden');
             return;
         }
 
@@ -140,6 +152,9 @@ export async function checkPassword() {
 }
 
 
+/**
+ * 處理學生資料表單提交 (建檔)。
+ */
 document.getElementById('info-form').addEventListener('submit', async function(e) {
     e.preventDefault(); 
 
@@ -161,7 +176,22 @@ document.getElementById('info-form').addEventListener('submit', async function(e
     };
     
     try {
-        await setDoc(doc(db, "users", studentId), studentInfo);
+        // 檢查學號是否重複建檔
+        const docRef = doc(db, "users", studentId);
+        // 為了確保該學號的文件確實不存在，需要先嘗試讀取
+        const existingDoc = await getDocs(query(docRef)); 
+        if (!existingDoc.empty) { // 檢查文件是否存在 (雖然 doc(db, "users", studentId) 總是會返回一個 reference, 但這裡用 getDocs 確保查詢是正確的)
+             // 更好的檢查是直接嘗試 getDoc(docRef) 並檢查 .exists
+             // 由於先前版本的代碼結構，這裡做一個簡單的優化：
+             const docSnap = await getDoc(docRef);
+             if (docSnap.exists()) {
+                 alert("此學號已存在建檔紀錄，請確認您的學號是否輸入錯誤，或直接使用密語打卡。");
+                 return;
+             }
+        }
+
+        await setDoc(docRef, studentInfo);
+        
         await recordCheckIn(studentInfo);
         showSuccessStage(studentInfo);
     } catch (error) {
@@ -172,21 +202,14 @@ document.getElementById('info-form').addEventListener('submit', async function(e
 
 
 /**
- * ❗❗ 刪除 'confirmUpload' 函數，因為它已不再有對應按鈕。
- */
-
-/**
  * 清除本地快取資料並返回打卡介面 (重載頁面)。
  */
 export function resetData() {
-    // 清除本地儲存，確保完全重置狀態
     localStorage.clear();
-    // 重載頁面，回到初始密碼輸入畫面
     window.location.reload();
 }
 
 // 綁定到 window 
 window.checkPassword = checkPassword;
-// ❗❗ 移除 window.confirmUpload 綁定
 window.resetData = resetData;
-
+window.showInfoStage = showInfoStage;
