@@ -1,4 +1,4 @@
-// 引入 Firebase SDK 模組 (已升級版本並補齊 getDoc)
+// 引入 Firebase SDK 模組 (已升級並統一版本 v10.12.2)
 import { 
     initializeApp 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -13,13 +13,13 @@ import {
     query, 
     where, 
     getDocs,
-    getDoc // ❗ 補齊：用於單一文件檢查
+    getDoc 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 
-// Your web app's Firebase configuration (保持不變)
+// ❗❗❗❗ 請將以下替換為您的 Firebase 專案配置 ❗❗❗❗
 const firebaseConfig = {
-    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c",
+    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c", // 請確認這是否為您的金鑰
     authDomain: "classcheckinsystem.firebaseapp.com",
     projectId: "classcheckinsystem",
     storageBucket: "classcheckinsystem.firebasestorage.app",
@@ -28,13 +28,13 @@ const firebaseConfig = {
 };
 
 
-// 初始化 Firebase 應用程式和 Firestore (保持不變)
+// 初始化 Firebase 應用程式和 Firestore
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const studentsCol = collection(db, "users"); // 學生建檔資料集合
 const checkinsCol = collection(db, "checkins"); // 打卡紀錄集合
 
-// 課程節次時間表 (保持不變)
+// 課程節次時間表 (用於自動判斷)
 const SECTION_TIMES = [
     { hour: 8, minute: 10, name: "第 1 節 (08:10)" },
     { hour: 9, minute: 0, name: "第 2 節 (09:00)" },
@@ -48,7 +48,37 @@ const SECTION_TIMES = [
     { hour: 17, minute: 0, name: "放學/課後 (17:00)" }
 ];
 
-// --- 輔助函數 (保持不變) ---
+// 手動模式狀態變數
+let isManualMode = false;
+
+// --- 模式與節次函數 ---
+
+/**
+ * ❗ 新增：切換手動選擇節次模式的 UI
+ */
+export function toggleManualMode() {
+    isManualMode = !isManualMode;
+    const manualStage = document.getElementById('manual-section-stage');
+    const statusDisplay = document.getElementById('auto-section-status');
+    const switchButton = document.querySelector('.mode-switch-button');
+
+    if (isManualMode) {
+        manualStage.classList.remove('hidden');
+        statusDisplay.innerHTML = '🔴 **目前模式：手動節次選擇 (可複選)**';
+        statusDisplay.style.color = '#dc3545';
+        switchButton.textContent = '切換回自動節次模式';
+    } else {
+        manualStage.classList.add('hidden');
+        statusDisplay.innerHTML = '🟢 **目前模式：自動節次判斷**';
+        statusDisplay.style.color = '#28a745';
+        switchButton.textContent = '切換節次模式';
+    }
+}
+
+
+/**
+ * 獲取當前自動判斷的節次
+ */
 function getSectionByTime() {
     const now = new Date();
     const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
@@ -69,25 +99,57 @@ function getSectionByTime() {
     return currentSection;
 }
 
+
+/**
+ * ❗ 新增：獲取手動選擇的節次列表
+ */
+function getManualSections() {
+    const checkboxes = document.querySelectorAll('#manual-section-stage input[type="checkbox"]:checked');
+    const selectedSections = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (selectedSections.length === 0) {
+        alert("您已切換為手動模式，請至少選擇一個節次！");
+        return null;
+    }
+    // 將多個節次合併成一個字串
+    return selectedSections.join(' | ');
+}
+
+
+/**
+ * ❗ 調整：根據模式寫入打卡紀錄
+ */
 async function recordCheckIn(studentInfo) {
-    const currentSection = getSectionByTime();
+    let sectionToRecord;
+
+    if (isManualMode) {
+        sectionToRecord = getManualSections();
+        if (!sectionToRecord) return false; 
+    } else {
+        sectionToRecord = getSectionByTime();
+    }
+
     const checkInRecord = {
         studentId: studentInfo.studentId,
         className: studentInfo.className,
         name: studentInfo.name,
-        section: currentSection,
-        timestamp: serverTimestamp() // 這裡使用 serverTimestamp()，需要正確的模組導入
+        section: sectionToRecord, 
+        timestamp: serverTimestamp() 
     };
     try {
         await addDoc(checkinsCol, checkInRecord);
-        return true;
+        return checkInRecord; // 成功時返回完整紀錄
     } catch (error) {
         console.error("寫入打卡紀錄失敗: ", error);
         return false;
     }
 }
 
-function showSuccessStage(studentInfo) {
+
+/**
+ * ❗ 調整：顯示打卡成功畫面
+ */
+function showSuccessStage(studentInfo, record) {
     document.getElementById('password-stage').classList.add('hidden');
     document.getElementById('info-stage').classList.add('hidden');
     const successStage = document.getElementById('success-stage');
@@ -101,7 +163,7 @@ function showSuccessStage(studentInfo) {
     document.getElementById('display-name').textContent = studentInfo.name;
     document.getElementById('display-student-id').textContent = studentInfo.studentId;
     document.getElementById('display-date').textContent = dateString; 
-    document.getElementById('display-section').textContent = getSectionByTime();
+    document.getElementById('display-section').textContent = record.section; 
     document.getElementById('display-timestamp').textContent = timeString; 
 }
 
@@ -109,12 +171,12 @@ function showSuccessStage(studentInfo) {
 // --- 核心邏輯函數 ---
 
 /**
- * 顯示建檔畫面
+ * ❗ 新增：顯示建檔畫面
  */
 export function showInfoStage() {
     document.getElementById('password-stage').classList.add('hidden');
     document.getElementById('info-stage').classList.remove('hidden');
-    document.getElementById('password-error').textContent = ''; // 清除錯誤訊息
+    document.getElementById('password-error').textContent = ''; 
 }
 
 /**
@@ -139,7 +201,6 @@ export async function checkPassword() {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            // 密語錯誤，只顯示錯誤訊息，提示點擊建檔按鈕
             errorDisplay.textContent = "通關密語錯誤！若您是首次使用，請點擊「我是第一次用！我要建檔」。";
             passwordStage.classList.remove('hidden');
             return;
@@ -148,13 +209,17 @@ export async function checkPassword() {
         const studentDoc = querySnapshot.docs[0];
         const studentInfo = studentDoc.data();
         
-        const success = await recordCheckIn(studentInfo); 
+        const record = await recordCheckIn(studentInfo); 
         
-        if (success) {
+        if (record) {
             errorDisplay.textContent = '';
-            showSuccessStage(studentInfo);
+            showSuccessStage(studentInfo, record); 
         } else {
-            errorDisplay.textContent = "打卡失敗，無法寫入資料庫！";
+            if (!isManualMode) {
+                 errorDisplay.textContent = "打卡失敗，無法寫入資料庫！";
+            } else {
+                 errorDisplay.textContent = "手動模式下必須選擇至少一個節次。";
+            }
             passwordStage.classList.remove('hidden');
         }
 
@@ -192,7 +257,6 @@ document.getElementById('info-form').addEventListener('submit', async function(e
     try {
         // 檢查學號是否重複建檔
         const docRef = doc(db, "users", studentId);
-        // ❗ 修正：使用正確引入的 getDoc
         const docSnap = await getDoc(docRef); 
         
         if (docSnap.exists()) {
@@ -200,10 +264,12 @@ document.getElementById('info-form').addEventListener('submit', async function(e
              return;
         }
 
+        // 寫入建檔資料
         await setDoc(docRef, studentInfo);
         
-        await recordCheckIn(studentInfo);
-        showSuccessStage(studentInfo);
+        // 立即打卡
+        const record = await recordCheckIn(studentInfo); 
+        showSuccessStage(studentInfo, record); 
     } catch (error) {
         console.error("建檔或打卡寫入失敗: ", error);
         alert("資料庫寫入失敗，請檢查網路或專案設定。");
@@ -223,3 +289,4 @@ export function resetData() {
 window.checkPassword = checkPassword;
 window.resetData = resetData;
 window.showInfoStage = showInfoStage;
+window.toggleManualMode = toggleManualMode;
