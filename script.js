@@ -54,7 +54,20 @@ let isManualMode = false; // 預設為 FALSE
 // --- 模式與節次函數 ---
 
 /**
- * ❗ 修正：切換手動選擇節次模式的 UI (自動模式下隱藏手動選擇框)
+ * 頁面載入時的初始化函數，確保 UI 狀態正確
+ */
+function initializeMode() {
+    // 確保在腳本載入後，UI 確實匹配 isManualMode = false 的初始狀態
+    const manualStage = document.getElementById('manual-section-stage');
+    const statusDisplay = document.getElementById('auto-section-status');
+
+    manualStage.classList.add('hidden'); // 確保手動選擇框被隱藏
+    statusDisplay.innerHTML = '🟢 **目前模式：自動節次判斷**';
+    statusDisplay.style.color = '#28a745';
+}
+
+/**
+ * 切換手動選擇節次模式的 UI (自動模式下隱藏手動選擇框)
  */
 export function toggleManualMode() {
     isManualMode = !isManualMode;
@@ -287,6 +300,10 @@ export function resetData() {
     localStorage.clear();
     window.location.reload();
 }
+
+
+// ❗ 腳本初始化：確保頁面載入後 UI 狀態正確
+document.addEventListener('DOMContentLoaded', initializeMode);
 
 // 綁定到 window 
 window.checkPassword = checkPassword;
