@@ -9,20 +9,49 @@
         .container { max-width: 800px; padding: 30px; }
         h1 { color: #28a745; border-color: #28a745; }
         .login-box { 
-            padding: 20px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 20px; background-color: #f8f9fa;
+            padding: 20px; 
+            border: 1px solid #ccc; 
+            border-radius: 8px; 
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
         }
         .login-box button { background-color: #28a745; margin-top: 20px; }
+        .login-box button:hover { background-color: #1e7e34; }
         .records-container {
-            margin-top: 30px; border-top: 2px solid #28a745; padding-top: 20px;
+            margin-top: 30px;
+            border-top: 2px solid #28a745;
+            padding-top: 20px;
         }
         #records-list {
-            list-style: none; padding: 0; text-align: left;
+            list-style: none;
+            padding: 0;
+            text-align: left;
         }
         #records-list li {
-            background-color: #fff; padding: 10px; border-bottom: 1px dashed #ddd; margin-bottom: 8px; border-left: 5px solid #007bff; font-size: 0.95em;
+            background-color: #fff;
+            padding: 10px;
+            border-bottom: 1px dashed #ddd;
+            margin-bottom: 8px;
+            border-left: 5px solid #007bff;
+            font-size: 0.95em;
+            overflow: hidden; 
         }
         .record-header {
-            font-weight: bold; color: #d9534f; margin-right: 15px;
+            font-weight: bold;
+            color: #d9534f;
+            margin-right: 15px;
+        }
+        .delete-btn {
+            background-color: #d9534f; 
+            float: right; 
+            padding: 5px 10px; 
+            font-size: 0.8em; 
+            width: auto;
+            margin-left: 10px; 
+        }
+        .delete-all-btn {
+            background-color: #d9534f !important; 
+            margin-bottom: 15px;
         }
         .hidden { display: none; }
     </style>
@@ -45,8 +74,13 @@
         </div>
 
         <div id="records-display" class="records-container hidden">
-            <h2>📋 最新打卡紀錄</h2>
-            <p>最近 50 筆紀錄，按時間倒序排列：</p>
+            <h2>📋 所有打卡紀錄</h2>
+            <p>已從雲端載入所有紀錄，按時間倒序排列：</p>
+            
+            <button onclick="exportCheckinsToCSV()" style="background-color: #0099cc; margin-bottom: 15px;">📥 匯出 CSV 檔案</button>
+
+            <button onclick="deleteAllCheckInRecords()" class="delete-all-btn">❌ 刪除所有紀錄 (不可復原)</button>
+
             <ul id="records-list">
                 </ul>
             <button onclick="fetchCheckInRecords()">🔄 重新整理</button>
