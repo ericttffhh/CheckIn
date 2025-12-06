@@ -6,7 +6,7 @@
     <title>線上打卡系統 (Firebase)</title>
     <link rel="stylesheet" href="style.css"> 
     <style>
-        /* 基本樣式定義 (如果 style.css 不存在，可使用以下) */
+        /* 基礎樣式 */
         .container {
             max-width: 500px; margin: 50px auto; padding: 20px; text-align: center; border: 1px solid #ccc; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
@@ -23,9 +23,19 @@
         .highlight { color: #d9534f; font-weight: bold; }
         .password-controls { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
         .admin-button { background-color: #6c757d !important; }
+        .new-user-button { background-color: #ffc107; color: #333; margin-top: 15px; } /* 新增按鈕樣式 */
         @media (min-width: 600px) {
             .password-controls { flex-direction: row; }
             .password-controls a { flex-grow: 1; }
+        }
+        /* 版權資訊樣式 */
+        .footer-copyright {
+            position: fixed;
+            bottom: 5px;
+            right: 10px;
+            font-size: 12px;
+            color: #ccc;
+            opacity: 0.7;
         }
     </style>
 </head>
@@ -46,6 +56,8 @@
                 </a>
             </div>
             
+            <button class="new-user-button" onclick="showInfoStage()">🆕 我是第一次用！我要建檔</button>
+
             <p id="password-error" class="error-message"></p>
         </div>
 
@@ -68,6 +80,7 @@
 
                 <button type="submit">✅ 完成建檔並打卡</button>
             </form>
+            <button onclick="resetData()" style="background-color: #dc3545; margin-top: 15px;">取消並返回</button>
         </div>
 
         <div id="success-stage" class="stage hidden">
@@ -85,6 +98,10 @@
             
             <button onclick="resetData()" style="background-color: #007bff; margin-top: 15px;">⬅️ 返回打卡介面</button>
         </div>
+    </div>
+    
+    <div class="footer-copyright">
+        Power by Ericqw
     </div>
 
     <script src="script.js" type="module"></script>
