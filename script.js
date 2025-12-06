@@ -60,10 +60,15 @@ function initializeMode() {
     // 確保在腳本載入後，UI 確實匹配 isManualMode = false 的初始狀態
     const manualStage = document.getElementById('manual-section-stage');
     const statusDisplay = document.getElementById('auto-section-status');
+    const switchButton = document.querySelector('.mode-switch-button');
 
-    manualStage.classList.add('hidden'); // 確保手動選擇框被隱藏
+    // 關鍵修正：確保隱藏
+    manualStage.classList.add('hidden'); 
+    
+    // 確保狀態文字正確
     statusDisplay.innerHTML = '🟢 **目前模式：自動節次判斷**';
     statusDisplay.style.color = '#28a745';
+    switchButton.textContent = '切換節次模式';
 }
 
 /**
