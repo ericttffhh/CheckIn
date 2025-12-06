@@ -189,4 +189,47 @@ export async function exportCheckinsToCSV() {
 
         if (querySnapshot.empty) {
             alert("目前沒有任何打卡紀錄可以匯出。");
-            return
+            return;
+        }
+
+        let csv = "姓名,學號,班級,節次,打卡時間\n";
+        
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            
+            const timestamp = data.timestamp ? 
+                data.timestamp.toDate().toLocaleString('zh-TW', { timeZoneName: 'short' }) : 
+                'N/A';
+                
+            csv += `${data.name},${data.studentId},${data.className},${data.section},"${timestamp}"\n`;
+        });
+
+        const finalCsv = '\ufeff' + csv; 
+        const blob = new Blob([finalCsv], { type: 'text/csv;charset=utf-8;' });
+        
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        
+        const dateString = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        link.setAttribute("href", url);
+        link.setAttribute("download", `checkin_records_${dateString}.csv`);
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        alert(`成功匯出 ${querySnapshot.size} 筆打卡紀錄！`);
+
+    } catch (error) {
+        console.error("匯出 CSV 失敗: ", error);
+        alert("匯出 CSV 失敗：無法讀取資料庫。");
+    }
+}
+
+// 綁定到 window 
+window.handleAdminLogin = handleAdminLogin;
+window.fetchCheckInRecords = fetchCheckInRecords;
+window.deleteSingleCheckInRecord = deleteSingleCheckInRecord;
+window.deleteAllCheckInRecords = deleteAllCheckInRecords;
+window.exportCheckinsToCSV = exportCheckinsToCSV;
+window.fetchUserRecords = fetchUserRecords;
