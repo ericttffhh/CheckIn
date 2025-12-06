@@ -3,14 +3,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase
 import { getFirestore, collection, doc, setDoc, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 
-// ❗❗❗❗ 請將以下替換為您的 Firebase 專案配置 ❗❗❗❗
+// Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY", // <--- 請替換這裡
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c",
+  authDomain: "classcheckinsystem.firebaseapp.com",
+  projectId: "classcheckinsystem",
+  storageBucket: "classcheckinsystem.firebasestorage.app",
+  messagingSenderId: "592387609788",
+  appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
 };
 
 // 初始化 Firebase 應用程式和 Firestore
@@ -221,3 +221,4 @@ export function resetData() {
 window.checkPassword = checkPassword;
 window.confirmUpload = confirmUpload;
 window.resetData = resetData;
+
