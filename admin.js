@@ -1,32 +1,32 @@
-// ¤Ş¤J Firebase SDK ¼Ò²Õ
+// å¼•å…¥ Firebase SDK æ¨¡çµ„
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getFirestore, collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 
-// ???? ½Ğ±N¥H¤U´À´«¬°±zªº Firebase ±M®×°t¸m ????
-// ½T«O³o¬q°t¸m»P script.js ¤¤ªº°t¸m§¹¥ş¬Û¦P
+// Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c",
-    authDomain: "classcheckinsystem.firebaseapp.com",
-    projectId: "classcheckinsystem",
-    storageBucket: "classcheckinsystem.firebasestorage.app",
-    messagingSenderId: "592387609788",
-    appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
+  apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c",
+  authDomain: "classcheckinsystem.firebaseapp.com",
+  projectId: "classcheckinsystem",
+  storageBucket: "classcheckinsystem.firebasestorage.app",
+  messagingSenderId: "592387609788",
+  appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
 };
 
-// ªì©l¤Æ Firebase
+
+// åˆå§‹åŒ– Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const checkinsCol = collection(db, "checkins");
 
-// --- ºŞ²z­û±K½X³]©w (¶È¬°¼ÒÀÀ¡A¹ê»ÚÀ³¥ÎÀ³¨Ï¥Î Firebase Authentication) ---
+// --- ç®¡ç†å“¡å¯†ç¢¼è¨­å®š (åƒ…ç‚ºæ¨¡æ“¬ï¼Œè«‹å‹¿ç”¨æ–¼å¯¦éš›ç”Ÿç”¢ç’°å¢ƒ) ---
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "123456";
 
-// --- »²§U¨ç¼Æ ---
+// --- è¼”åŠ©å‡½æ•¸ ---
 
 /**
- * ³B²zºŞ²z­ûµn¤J¡C
+ * è™•ç†ç®¡ç†å“¡ç™»å…¥ã€‚
  */
 export function handleAdminLogin() {
     const user = document.getElementById('admin-user').value;
@@ -35,12 +35,12 @@ export function handleAdminLogin() {
     const display = document.getElementById('records-display');
 
     if (user === ADMIN_USER && pass === ADMIN_PASS) {
-        message.textContent = "µn¤J¦¨¥\¡I¥¿¦b¸ü¤J¼Æ¾Ú...";
+        message.textContent = "ç™»å…¥æˆåŠŸï¼æ­£åœ¨è¼‰å…¥æ•¸æ“š...";
         message.style.color = 'green';
         display.classList.remove('hidden');
-        fetchCheckInRecords(); // µn¤J¦¨¥\«á¥ß§Y¸ü¤J¼Æ¾Ú
+        fetchCheckInRecords(); // ç™»å…¥æˆåŠŸå¾Œç«‹å³è¼‰å…¥æ•¸æ“š
     } else {
-        message.textContent = "±b¸¹©Î±K½X¿ù»~¡C";
+        message.textContent = "å¸³è™Ÿæˆ–å¯†ç¢¼éŒ¯èª¤ã€‚";
         message.style.color = 'red';
         display.classList.add('hidden');
     }
@@ -48,27 +48,27 @@ export function handleAdminLogin() {
 
 
 /**
- * ±q Firestore Àò¨ú³Ì·sªº¥´¥d¬ö¿ı¡C
+ * å¾ Firestore ç²å–æœ€æ–°çš„æ‰“å¡ç´€éŒ„ã€‚
  */
 export async function fetchCheckInRecords() {
     const recordsList = document.getElementById('records-list');
-    recordsList.innerHTML = '<li>¥¿¦b±q¶³ºİ¸ü¤J¼Æ¾Ú...</li>';
+    recordsList.innerHTML = '<li>æ­£åœ¨å¾é›²ç«¯è¼‰å…¥æ•¸æ“š...</li>';
 
     try {
-        // ¬d¸ß³Ì·sªº 50 µ§¥´¥d¬ö¿ı¡A¨Ã«ö®É¶¡ÂW°O­°§Ç±Æ¦C
+        // æŸ¥è©¢æœ€æ–°çš„ 50 ç­†æ‰“å¡ç´€éŒ„ï¼Œä¸¦æŒ‰æ™‚é–“æˆ³è¨˜é™åºæ’åˆ—
         const q = query(checkinsCol, orderBy("timestamp", "desc"), limit(50));
         const querySnapshot = await getDocs(q);
 
-        recordsList.innerHTML = ''; // ²M°£¸ü¤J°T®§
+        recordsList.innerHTML = ''; // æ¸…é™¤è¼‰å…¥è¨Šæ¯
         
         if (querySnapshot.empty) {
-            recordsList.innerHTML = '<li>¥Ø«e¨S¦³¥ô¦ó¥´¥d¬ö¿ı¡C</li>';
+            recordsList.innerHTML = '<li>ç›®å‰æ²’æœ‰ä»»ä½•æ‰“å¡ç´€éŒ„ã€‚</li>';
             return;
         }
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
-            // ±N Firestore ªº Timestamp Âà´«¬°¥iÅªªº¤é´Á®É¶¡
+            // å°‡ Firestore çš„ Timestamp è½‰æ›ç‚ºå¯è®€çš„æ—¥æœŸæ™‚é–“
             const date = data.timestamp ? data.timestamp.toDate().toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'medium', hour12: false }) : 'N/A';
             
             const listItem = document.createElement('li');
@@ -76,17 +76,17 @@ export async function fetchCheckInRecords() {
                 <span class="record-header">${date}</span> | 
                 <strong>${data.name}</strong> (${data.studentId}) - ${data.className}
                 <br>
-                ¸`¦¸: ${data.section}
+                ç¯€æ¬¡: ${data.section}
             `;
             recordsList.appendChild(listItem);
         });
 
     } catch (error) {
-        console.error("Åª¨ú«á¥x¬ö¿ı¥¢±Ñ: ", error);
-        recordsList.innerHTML = '<li>Åª¨ú¼Æ¾Ú®Éµo¥Í¿ù»~¡A½ĞÀË¬d±zªººô¸ô©Î Firebase Åv­­³]©w¡C</li>';
+        console.error("è®€å–å¾Œå°ç´€éŒ„å¤±æ•—: ", error);
+        recordsList.innerHTML = '<li>è®€å–æ•¸æ“šæ™‚ç™¼ç”ŸéŒ¯èª¤ï¼Œè«‹æª¢æŸ¥æ‚¨çš„ç¶²è·¯æˆ– Firebase æ¬Šé™è¨­å®šã€‚</li>';
     }
 }
 
-// ±N¨ç¼Æ¸j©w¨ì window¡A¥H½T«O HTML ¤¤ªº onclick ¯à°÷©I¥s¨ì
+// å°‡å‡½æ•¸ç¶å®šåˆ° window
 window.handleAdminLogin = handleAdminLogin;
 window.fetchCheckInRecords = fetchCheckInRecords;
