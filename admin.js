@@ -53,7 +53,7 @@ export function handleAdminLogin() {
         fetchCheckInRecords(); 
         fetchUserRecords(); 
     } else {
-        message.textContent = "帳號或密碼錯誤。";
+        message.textContent = "帳號密碼錯誤。";
         message.style.color = 'red';
         displayRecords.classList.add('hidden');
         displayUsers.classList.add('hidden');
@@ -253,4 +253,5 @@ window.deleteSingleCheckInRecord = deleteSingleCheckInRecord;
 window.deleteAllCheckInRecords = deleteAllCheckInRecords;
 window.exportCheckinsToCSV = exportCheckinsToCSV;
 window.fetchUserRecords = fetchUserRecords;
+
 
