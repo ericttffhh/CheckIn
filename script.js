@@ -52,7 +52,34 @@ const SECTION_TIMES = [
 // 手動模式狀態變數
 let isManualMode = false; // 預設為 FALSE
 
-// --- 模式與節次函數 ---
+// ----------------------------------------------------------------------
+// ❗ 核心安全防禦函數：防止 XSS 攻擊
+// ----------------------------------------------------------------------
+/**
+ * 淨化輸入字串，轉義潛在的 HTML 標籤符號，防止 XSS 攻擊。
+ * 這會將 < 轉換成 &lt;，> 轉換成 &gt;，確保瀏覽器不會將其解析為 HTML。
+ * @param {string} input - 來自使用者輸入的原始字串
+ * @returns {string} - 安全的字串
+ */
+function sanitizeInput(input) {
+    if (!input) return '';
+
+    let cleanString = String(input).trim();
+
+    // 轉義 HTML 特殊字符
+    cleanString = cleanString.replace(/&/g, '&amp;')
+                             .replace(/</g, '&lt;')
+                             .replace(/>/g, '&gt;')
+                             .replace(/"/g, '&quot;')
+                             .replace(/'/g, '&#x27;')
+                             .replace(/\//g, '&#x2F;');
+
+    return cleanString;
+}
+// ----------------------------------------------------------------------
+
+
+// --- 模式與節次函數 (保持不變) ---
 
 /**
  * 格式化日期為 YYYY-MM-DD
@@ -73,10 +100,10 @@ function initializeMode() {
     const switchButton = document.querySelector('.mode-switch-button');
     const manualDateInput = document.getElementById('manual-date-input');
 
-    // 關鍵修正：確保隱藏
+    // 確保隱藏
     manualStage.classList.add('hidden'); 
     
-    // 關鍵修正：設定手動日期的預設值為今天
+    // 設定手動日期的預設值為今天
     const today = new Date();
     manualDateInput.value = formatDateToISO(today);
 
@@ -87,7 +114,7 @@ function initializeMode() {
 }
 
 /**
- * 切換手動選擇節次模式的 UI (自動模式下隱藏手動選擇框) (略)
+ * 切換手動選擇節次模式的 UI (保持不變)
  */
 export function toggleManualMode() {
     isManualMode = !isManualMode;
@@ -96,13 +123,11 @@ export function toggleManualMode() {
     const switchButton = document.querySelector('.mode-switch-button');
 
     if (isManualMode) {
-        // 切換到手動模式，顯示選擇框
         manualStage.classList.remove('hidden');
         statusDisplay.innerHTML = '🔴 **目前模式：手動節次選擇 (可複選)**';
         statusDisplay.style.color = '#dc3545';
         switchButton.textContent = '切換回自動節次模式';
     } else {
-        // 切換到自動模式，隱藏選擇框
         manualStage.classList.add('hidden');
         statusDisplay.innerHTML = '🟢 **目前模式：自動節次判斷**';
         statusDisplay.style.color = '#28a745';
@@ -112,7 +137,7 @@ export function toggleManualMode() {
 
 
 /**
- * 獲取當前自動判斷的節次 (略)
+ * 獲取當前自動判斷的節次 (保持不變)
  */
 function getSectionByTime() {
     const now = new Date();
@@ -136,7 +161,7 @@ function getSectionByTime() {
 
 
 /**
- * 獲取手動選擇的節次列表 (略)
+ * 獲取手動選擇的節次列表 (保持不變)
  */
 function getManualSections() {
     const checkboxes = document.querySelectorAll('#manual-section-stage input[type="checkbox"]:checked');
@@ -146,13 +171,12 @@ function getManualSections() {
         alert("您已切換為手動模式，請至少選擇一個節次！");
         return null;
     }
-    // 將多個節次合併成一個字串
     return selectedSections.join(' | ');
 }
 
 
 /**
- * 根據模式寫入打卡紀錄
+ * 根據模式寫入打卡紀錄 (寫入前無需淨化，因為 studentInfo 已被淨化過)
  */
 async function recordCheckIn(studentInfo) {
     let sectionToRecord;
@@ -161,7 +185,7 @@ async function recordCheckIn(studentInfo) {
     // 獲取節次和日期
     if (isManualMode) {
         sectionToRecord = getManualSections();
-        dateToRecord = document.getElementById('manual-date-input').value; // YYYY-MM-DD 格式
+        dateToRecord = document.getElementById('manual-date-input').value;
         
         if (!sectionToRecord) return false; 
         if (!dateToRecord) {
@@ -170,15 +194,15 @@ async function recordCheckIn(studentInfo) {
         }
     } else {
         sectionToRecord = getSectionByTime();
-        dateToRecord = formatDateToISO(new Date()); // 自動模式下使用當前日期
+        dateToRecord = formatDateToISO(new Date());
     }
 
     const checkInRecord = {
+        // studentInfo 包含的資料 (studentId, className, name) 在建檔時已被淨化
         studentId: studentInfo.studentId,
         className: studentInfo.className,
         name: studentInfo.name,
         section: sectionToRecord, 
-        // 關鍵修正：新增打卡日期
         checkinDate: dateToRecord, 
         timestamp: serverTimestamp() 
     };
@@ -193,7 +217,7 @@ async function recordCheckIn(studentInfo) {
 
 
 /**
- * 顯示打卡成功畫面
+ * 顯示打卡成功畫面 (保持不變，因為 `textContent` 是安全的)
  */
 function showSuccessStage(studentInfo, record) {
     document.getElementById('password-stage').classList.add('hidden');
@@ -202,40 +226,29 @@ function showSuccessStage(studentInfo, record) {
     successStage.classList.remove('hidden');
     
     const now = new Date();
-    // 顯示打卡時間 (即時時間)
     const timeString = now.toLocaleTimeString('zh-TW', { hour12: false });
 
-    // 顯示打卡日期 (從紀錄中獲取，可能是手動選擇的日期)
-    // 將 YYYY-MM-DD 轉為中文顯示格式
-    const recordDate = new Date(record.checkinDate + 'T00:00:00'); // 避免時區問題
+    const recordDate = new Date(record.checkinDate + 'T00:00:00'); 
     const displayDateString = recordDate.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 
 
+    // ❗ 關鍵：使用 textContent 是安全的，它不會解析 HTML
     document.getElementById('display-class').textContent = studentInfo.className;
     document.getElementById('display-name').textContent = studentInfo.name;
     document.getElementById('display-student-id').textContent = studentInfo.studentId;
-    // 關鍵修正：顯示打卡日期
     document.getElementById('display-date').textContent = displayDateString; 
     document.getElementById('display-section').textContent = record.section; 
     document.getElementById('display-timestamp').textContent = timeString; 
 }
 
 
-// --- 核心邏輯函數 (略) ---
-// ... (checkPassword, showInfoStage, resetData 保持不變)
-
-/**
- * 顯示建檔畫面
- */
+// --- 核心邏輯函數 (保持不變) ---
 export function showInfoStage() {
     document.getElementById('password-stage').classList.add('hidden');
     document.getElementById('info-stage').classList.remove('hidden');
     document.getElementById('password-error').textContent = ''; 
 }
 
-/**
- * 檢查通關密語並打卡 (邏輯不變，僅調用 recordCheckIn)
- */
 export async function checkPassword() {
     const passwordInput = document.getElementById('password-input').value;
     const errorDisplay = document.getElementById('password-error');
@@ -249,7 +262,10 @@ export async function checkPassword() {
         return;
     }
 
-    const q = query(studentsCol, where("password", "==", passwordInput));
+    // ❗ 由於密語將用於查詢，為確保一致性，應先淨化
+    const safePassword = sanitizeInput(passwordInput);
+
+    const q = query(studentsCol, where("password", "==", safePassword));
     
     try {
         const querySnapshot = await getDocs(q);
@@ -261,7 +277,9 @@ export async function checkPassword() {
         }
 
         const studentDoc = querySnapshot.docs[0];
-        const studentInfo = studentDoc.data();
+        // 🚨 警示：如果資料庫中的資料未被淨化，這裡讀出來的 name 仍可能帶有惡意腳本。
+        //        雖然 showSuccessStage 使用 textContent 輸出，但為保險起見，應確保資料庫層級的淨化。
+        const studentInfo = studentDoc.data(); 
         
         const record = await recordCheckIn(studentInfo); 
         
@@ -269,7 +287,6 @@ export async function checkPassword() {
             errorDisplay.textContent = '';
             showSuccessStage(studentInfo, record); 
         } else {
-            // 如果是手動模式且沒有選擇節次或日期，recordCheckIn 會返回 false 並在內部彈窗
             if (!isManualMode) {
                  errorDisplay.textContent = "打卡失敗，無法寫入資料庫！";
             } else {
@@ -287,31 +304,34 @@ export async function checkPassword() {
 
 
 /**
- * 處理學生資料表單提交 (建檔)。 (略)
+ * 處理學生資料表單提交 (建檔)。 
+ * ❗ 關鍵修正：對所有輸入欄位進行淨化！
  */
 document.getElementById('info-form').addEventListener('submit', async function(e) {
     e.preventDefault(); 
 
-    const personalPassword = document.getElementById('personal-password-input').value.trim();
-    const className = document.getElementById('class-input').value.trim();
-    const name = document.getElementById('name-input').value.trim();
-    const studentId = document.getElementById('student-id-input').value.trim().toUpperCase();
+    // 讀取原始輸入
+    const personalPassword = document.getElementById('personal-password-input').value;
+    const className = document.getElementById('class-input').value;
+    const name = document.getElementById('name-input').value;
+    const studentId = document.getElementById('student-id-input').value;
     
-    if (personalPassword.length < 6) {
+    if (personalPassword.trim().length < 6) {
         alert("專屬密語必須至少為 6 個字元！");
         return;
     }
-    
+
+    // ❗ 關鍵防禦：在寫入資料庫前對所有欄位進行淨化
     const studentInfo = { 
-        password: personalPassword, 
-        className: className, 
-        name: name, 
-        studentId: studentId 
+        password: sanitizeInput(personalPassword), 
+        className: sanitizeInput(className), 
+        name: sanitizeInput(name), 
+        studentId: sanitizeInput(studentId).toUpperCase() // studentId 統一轉大寫
     };
     
     try {
-        // 檢查學號是否重複建檔 (略)
-        const docRef = doc(db, "users", studentId);
+        // 檢查學號是否重複建檔
+        const docRef = doc(db, "users", studentInfo.studentId);
         const docSnap = await getDoc(docRef); 
         
         if (docSnap.exists()) {
@@ -319,7 +339,7 @@ document.getElementById('info-form').addEventListener('submit', async function(e
              return;
         }
 
-        // 寫入建檔資料
+        // 寫入淨化後的建檔資料
         await setDoc(docRef, studentInfo);
         
         // 立即打卡
@@ -333,7 +353,7 @@ document.getElementById('info-form').addEventListener('submit', async function(e
 
 
 /**
- * 清除本地快取資料並返回打卡介面 (重載頁面)。
+ * 清除本地快取資料並返回打卡介面 (重載頁面)。(保持不變)
  */
 export function resetData() {
     localStorage.clear();
