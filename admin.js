@@ -1,4 +1,4 @@
-// 引入 Firebase SDK 模組 (已升級並統一版本 v10.12.2)
+// 引入 Firebase SDK 模組 (v10.12.2)
 import { 
     initializeApp 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -8,10 +8,18 @@ import {
     collection, 
     getDocs, 
     query, 
-    where, 
-    addDoc, 
-    serverTimestamp 
+    orderBy, 
+    doc, 
+    deleteDoc, 
+    writeBatch 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// 🚨 引入 Firebase Auth 模組
+import { 
+    getAuth, 
+    signInWithEmailAndPassword,
+    signOut 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 
 // ❗❗❗❗ 請將以下替換為您的 Firebase 專案配置 ❗❗❗❗
@@ -24,166 +32,306 @@ const firebaseConfig = {
     appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
 };
 
-// 初始化 Firebase
+// 初始化 Firebase 服務
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app); 
 const checkinsCol = collection(db, "checkins"); // 打卡紀錄
 const usersCol = collection(db, "users"); // 建檔紀錄
 
 
 // ----------------------------------------------------------------------
-// ❗ 核心安全防禦函數：XSS 輸入淨化 (Input Sanitization) ❗
+// ❗ 核心安全防禦函數：XSS 輸出編碼 (Output Encoding) ❗
 // ----------------------------------------------------------------------
 /**
- * 淨化使用者輸入的字串，將潛在的 HTML 標籤或危險字元轉換為純文字，
- * 防止 XSS 攻擊的 Payload 寫入資料庫。
- * * @param {string} input - 使用者輸入的原始字串
- * @returns {string} - 經過淨化的安全字串
+ * 使用 DOM textContent 屬性安全地對字串進行 HTML 轉義，
+ * 防止在將資料庫讀取的內容寫入 innerHTML 時發生 XSS 攻擊。
+ * @param {string} str - 從資料庫讀取的字串
+ * @returns {string} - 安全的 HTML 實體編碼字串
  */
-function sanitizeInput(input) {
-    if (typeof input !== 'string') {
-        // 如果輸入不是字串（如 null, undefined），轉為空字串再處理
-        input = String(input || ''); 
-    }
-    
-    // 簡單的淨化策略：
-    // 1. 移除前後空白。
-    // 2. 替換 < 和 > 為 HTML 實體，防止標籤注入。
-    // 3. 替換單引號和雙引號，防止字串逃逸。
-    return input.trim()
-                .replace(/&/g, '&amp;') // 必須先轉義 & 符號
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#x27;')
-                .replace(/\//g, '&#x2F;');
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
 }
 
 
-
 // ----------------------------------------------------------------------
-// I. 建檔相關函數
+// I. 登入與介面切換
 // ----------------------------------------------------------------------
 
 /**
- * 處理學生建檔
+ * 處理管理員登入 (使用 Firebase Auth)
  */
-export async function handleUserRegistration() {
-    const studentId = sanitizeInput(document.getElementById('reg-student-id').value);
-    const name = sanitizeInput(document.getElementById('reg-name').value);
-    const className = sanitizeInput(document.getElementById('reg-class-name').value);
-    const password = sanitizeInput(document.getElementById('reg-password').value);
-    const message = document.getElementById('reg-message');
-
-    message.textContent = ''; // 清除前次訊息
-
-    if (!studentId || !name || !className || !password) {
-        message.textContent = "所有欄位都是必填的！";
-        message.style.color = 'red';
-        return;
-    }
+export async function handleAdminLogin() {
+    const email = document.getElementById('admin-user').value;
+    const pass = document.getElementById('admin-pass').value;
+    const message = document.getElementById('admin-message');
+    
+    message.textContent = "正在登入...";
+    message.style.color = 'blue';
 
     try {
-        // 1. 檢查學號是否已存在
-        const q = query(usersCol, where("studentId", "==", studentId));
+        await signInWithEmailAndPassword(auth, email, pass);
+        // 登入成功後，onAuthStateChanged 會自動處理介面切換和資料載入
+        message.textContent = "登入成功！";
+
+    } catch (error) {
+        let errorMsg = "登入失敗：請檢查帳號密碼。";
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+             errorMsg = "帳號或密碼錯誤。";
+        } else if (error.code === 'auth/network-request-failed') {
+             errorMsg = "網路連線錯誤，請檢查網路。";
+        }
+        console.error("Firebase 登入失敗: ", error);
+        message.textContent = errorMsg;
+        message.style.color = 'red';
+    }
+}
+
+/**
+ * 登出管理員
+ */
+export async function handleAdminLogout() {
+    await signOut(auth);
+    window.location.reload(); // 重載頁面以返回登入介面
+}
+
+
+// ----------------------------------------------------------------------
+// II. 資料獲取與顯示
+// ----------------------------------------------------------------------
+
+/**
+ * 從 Firestore 獲取所有學生建檔紀錄。
+ */
+export async function fetchUserRecords() {
+    const usersList = document.getElementById('users-list');
+    usersList.innerHTML = '<li>正在從雲端載入建檔數據...</li>';
+    
+    if (!auth.currentUser) return; // 確保已登入
+
+    try {
+        const q = query(usersCol, orderBy("studentId", "asc"));
         const querySnapshot = await getDocs(q);
 
-        if (!querySnapshot.empty) {
-            message.textContent = `學號 ${studentId} 已存在建檔中，請勿重複註冊。`;
-            message.style.color = 'orange';
+        usersList.innerHTML = '';
+        
+        if (querySnapshot.empty) {
+            usersList.innerHTML = '<li>目前沒有任何學生建檔紀錄。</li>';
             return;
         }
 
-        // 2. 寫入新的建檔紀錄 (已使用 sanitizeInput 淨化過的資料)
-        await addDoc(usersCol, {
-            studentId: studentId,
-            name: name,
-            className: className,
-            password: password, // 密語已淨化
-            createdAt: serverTimestamp()
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            
+            // ❗ 關鍵防禦：使用 escapeHTML 淨化所有從資料庫讀取的輸出內容
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `
+                🆔 <strong>${escapeHTML(data.studentId)}</strong> | 
+                👤 ${escapeHTML(data.name)} (${escapeHTML(data.className)})
+                <br>
+                🔑 密語: <span style="color: #d9534f; font-weight: bold;">${escapeHTML(data.password)}</span>
+            `;
+            usersList.appendChild(listItem);
         });
 
-        message.textContent = `恭喜，學號 ${studentId} - ${name} 建檔成功！您現在可以使用密語進行打卡。`;
-        message.style.color = 'green';
+    } catch (error) {
+        console.error("讀取建檔紀錄失敗: ", error);
+        usersList.innerHTML = '<li>讀取建檔數據時發生錯誤。請確認您的 Firestore 規則已允許管理員讀取。</li>';
+    }
+}
+
+
+/**
+ * 從 Firestore 獲取所有打卡紀錄，並在後台顯示。
+ */
+export async function fetchCheckInRecords() {
+    const recordsList = document.getElementById('records-list');
+    recordsList.innerHTML = '<li>正在從雲端載入所有數據...</li>';
+
+    if (!auth.currentUser) return; // 確保已登入
+
+    try {
+        const q = query(checkinsCol, orderBy("timestamp", "desc"));
+        const querySnapshot = await getDocs(q);
+
+        recordsList.innerHTML = '';
         
-        // 清空輸入欄位
-        document.getElementById('reg-student-id').value = '';
-        document.getElementById('reg-name').value = '';
-        document.getElementById('reg-class-name').value = '';
-        document.getElementById('reg-password').value = '';
+        if (querySnapshot.empty) {
+            recordsList.innerHTML = '<li>目前沒有任何打卡紀錄。</li>';
+            return;
+        }
+
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const docId = doc.id; 
+            
+            const date = data.timestamp ? data.timestamp.toDate().toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'medium', hour12: false }) : 'N/A';
+            const checkinDateDisplay = data.checkinDate ? data.checkinDate : 'N/A'; 
+            
+            // ❗ 關鍵防禦：使用 escapeHTML 淨化所有從資料庫讀取的輸出內容
+            const safeName = escapeHTML(data.name);
+            const safeStudentId = escapeHTML(data.studentId);
+            const safeClassName = escapeHTML(data.className);
+            const safeSection = escapeHTML(data.section);
+
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `
+                <span class="record-header">${date}</span> | 
+                <strong>${safeName}</strong> (${safeStudentId}) - ${safeClassName}
+                
+                <button onclick="deleteSingleCheckInRecord('${docId}')" class="delete-btn">
+                    單筆刪除
+                </button>
+                <br>
+                **紀錄日期: ${checkinDateDisplay}** | 節次: ${safeSection}
+            `;
+            recordsList.appendChild(listItem);
+        });
 
     } catch (error) {
-        console.error("建檔失敗: ", error);
-        message.textContent = "建檔失敗，請檢查網路或聯繫管理員。";
-        message.style.color = 'red';
+        console.error("讀取後台紀錄失敗: ", error);
+        recordsList.innerHTML = '<li>讀取數據時發生錯誤，請檢查您的網路或 Firestore 規則。</li>';
     }
 }
 
 
 // ----------------------------------------------------------------------
-// II. 打卡相關函數
+// III. 資料操作 (刪除與匯出)
 // ----------------------------------------------------------------------
 
-/**
- * 處理學生打卡
- */
-export async function handleCheckIn() {
-    const password = sanitizeInput(document.getElementById('checkin-password').value);
-    const section = sanitizeInput(document.getElementById('checkin-section').value);
-    const message = document.getElementById('checkin-message');
-
-    message.textContent = ''; // 清除前次訊息
-
-    if (!password || !section) {
-        message.textContent = "請輸入密語並選擇節次。";
-        message.style.color = 'red';
+export async function deleteSingleCheckInRecord(docId) {
+    if (!auth.currentUser || !confirm("確定要刪除這筆打卡紀錄嗎？此操作不可復原。")) {
         return;
     }
 
     try {
-        // 1. 根據密語查詢建檔紀錄 (Users)
-        const q = query(usersCol, where("password", "==", password));
+        await deleteDoc(doc(db, "checkins", docId));
+        alert("單筆紀錄刪除成功！");
+        fetchCheckInRecords(); 
+    } catch (error) {
+        console.error("刪除單筆紀錄失敗: ", error);
+        alert("刪除失敗：權限不足或資料庫連線錯誤。");
+    }
+}
+
+
+export async function deleteAllCheckInRecords() {
+    if (!auth.currentUser || !confirm("⚠️ 警告：您確定要刪除所有打卡紀錄嗎？此操作不可復原且影響巨大！")) {
+        return;
+    }
+    
+    try {
+        const querySnapshot = await getDocs(checkinsCol);
+        if (querySnapshot.empty) {
+            alert("目前資料庫中沒有任何紀錄可以刪除。");
+            return;
+        }
+        
+        const batch = writeBatch(db);
+        let count = 0;
+        querySnapshot.forEach((doc) => {
+            batch.delete(doc.ref); 
+            count++;
+        });
+
+        await batch.commit();
+        alert(`成功刪除所有 ${count} 筆打卡紀錄！`);
+        fetchCheckInRecords(); 
+    } catch (error) {
+        console.error("刪除所有紀錄失敗: ", error);
+        alert("刪除所有紀錄失敗：請檢查網路或 Firebase 權限。");
+    }
+}
+
+
+export async function exportCheckinsToCSV() {
+    if (!auth.currentUser) {
+        alert('請先登入管理員帳號。');
+        return;
+    }
+    
+    try {
+        const q = query(checkinsCol, orderBy("timestamp", "desc"));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
-            message.textContent = "密語錯誤或尚未建檔。";
-            message.style.color = 'red';
+            alert("目前沒有任何打卡紀錄可以匯出。");
             return;
         }
-        
-        // 密語匹配成功，取得學生的建檔資料
-        const userData = querySnapshot.docs[0].data();
-        
-        // 2. 寫入打卡紀錄 (Checkins)
-        const checkinDate = new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' });
 
-        await addDoc(checkinsCol, {
-            studentId: userData.studentId,
-            name: userData.name,
-            className: userData.className,
-            section: section,
-            checkinDate: checkinDate, // 僅記錄日期 (YYYY/MM/DD)
-            timestamp: serverTimestamp() // 資料庫寫入時間
+        let csv = "姓名,學號,班級,打卡日期,節次,資料庫記錄時間\n";
+        
+        const escapeCsvField = (field) => `"${String(field).replace(/"/g, '""')}"`;
+
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            
+            const timestamp = data.timestamp ? 
+                data.timestamp.toDate().toLocaleString('zh-TW', { timeZoneName: 'short' }) : 
+                'N/A';
+            
+            const checkinDate = data.checkinDate || 'N/A'; 
+                
+            csv += `${escapeCsvField(data.name)},${escapeCsvField(data.studentId)},${escapeCsvField(data.className)},${escapeCsvField(checkinDate)},${escapeCsvField(data.section)},${escapeCsvField(timestamp)}\n`; 
         });
 
-        message.textContent = `${userData.name} (${userData.studentId})，第 ${section} 節打卡成功！`;
-        message.style.color = 'green';
+        const finalCsv = '\ufeff' + csv; 
+        const blob = new Blob([finalCsv], { type: 'text/csv;charset=utf-8;' });
         
-        // 清空密語輸入欄位
-        document.getElementById('checkin-password').value = '';
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        
+        const dateString = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        link.setAttribute("href", url);
+        link.setAttribute("download", `checkin_records_${dateString}.csv`);
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        alert(`成功匯出 ${querySnapshot.size} 筆打卡紀錄！`);
 
     } catch (error) {
-        console.error("打卡失敗: ", error);
-        message.textContent = "打卡失敗，請檢查網路或聯繫管理員。";
-        message.style.color = 'red';
+        console.error("匯出 CSV 失敗: ", error);
+        alert("匯出 CSV 失敗：無法讀取資料庫或權限不足。");
     }
 }
 
-
 // ----------------------------------------------------------------------
-// III. 全局綁定
+// IV. 狀態監聽與全局綁定
 // ----------------------------------------------------------------------
 
-// ❗ 確保這些函數可以被 HTML 中的 onclick 調用
-window.handleUserRegistration = handleUserRegistration;
-window.handleCheckIn = handleCheckIn;
+// 檢查登入狀態並在頁面載入時顯示正確的介面
+auth.onAuthStateChanged((user) => {
+    const loginStage = document.getElementById('login-stage');
+    const dashboardStage = document.getElementById('dashboard-stage');
+    
+    // 檢查元素是否存在，避免在其他頁面（如 index.html）載入時出錯
+    if (loginStage && dashboardStage) {
+        if (user) {
+            // 已登入，顯示後台
+            loginStage.classList.add('hidden');
+            dashboardStage.classList.remove('hidden');
+            fetchCheckInRecords(); 
+            fetchUserRecords();
+        } else {
+            // 未登入，顯示登入表單
+            loginStage.classList.remove('hidden');
+            dashboardStage.classList.add('hidden');
+        }
+    }
+});
+
+
+// ❗ 這是解決 'handleAdminLogin is not defined' 錯誤的關鍵！
+//    將所有需要被 HTML onclick 調用的函數顯式綁定到 window
+window.handleAdminLogin = handleAdminLogin;
+window.handleAdminLogout = handleAdminLogout; 
+window.fetchCheckInRecords = fetchCheckInRecords;
+window.deleteSingleCheckInRecord = deleteSingleCheckInRecord;
+window.deleteAllCheckInRecords = deleteAllCheckInRecords;
+window.exportCheckinsToCSV = exportCheckinsToCSV;
+window.fetchUserRecords = fetchUserRecords;
