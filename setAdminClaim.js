@@ -1,13 +1,11 @@
-// setAdminClaim.js
-const admin = require('firebase-admin');
+var admin = require("firebase-admin");
 
-// 1. 服務帳號憑證路徑
-const serviceAccount = require('./path/to/your/serviceAccountKey.json');
+var serviceAccount = require("path/to/serviceAccountKey.json");
 
-// 2. 初始化 Admin SDK
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
+
 
 // 3. ❗ 替換為您管理員帳號的 UID ❗
 // 您可以在 Firebase Console -> Authentication 頁面找到此 UID
