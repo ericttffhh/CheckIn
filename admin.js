@@ -335,3 +335,4 @@ window.deleteSingleCheckInRecord = deleteSingleCheckInRecord;
 window.deleteAllCheckInRecords = deleteAllCheckInRecords;
 window.exportCheckinsToCSV = exportCheckinsToCSV;
 window.fetchUserRecords = fetchUserRecords;
+window.firebaseAuth = auth;
