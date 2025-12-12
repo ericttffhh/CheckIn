@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>後台管理系統</title>
+    <title>打卡系統後台管理</title>
     <style>
-        /* ... (CSS 樣式保持不變) ... */
-        .container { max-width: 900px; margin: 30px auto; padding: 30px; border: 1px solid #ccc; border-radius: 10px; }
-        h1 { color: #28a745; border-color: #28a745; }
+        /* CSS 樣式修正：確保後台元素有足夠的區分 */
+        .container { max-width: 900px; margin: 30px auto; padding: 30px; border: 1px solid #ccc; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h1 { color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 10px; }
+        h2 { margin-top: 0; }
         .login-box { padding: 20px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 20px; background-color: #f8f9fa; }
         .records-container, .users-container {
             margin-top: 30px; padding-top: 20px; border-top: 2px solid;
@@ -16,60 +17,80 @@
         .users-container { border-color: #ffc107; }
 
         #records-list, #users-list { list-style: none; padding: 0; text-align: left; }
-        #records-list li { background-color: #fff; padding: 10px; border-bottom: 1px dashed #ddd; margin-bottom: 8px; border-left: 5px solid #007bff; font-size: 0.95em; }
+        #records-list li { background-color: #fff; padding: 10px; border-bottom: 1px dashed #ddd; margin-bottom: 8px; border-left: 5px solid #007bff; font-size: 0.95em; position: relative; }
         #users-list li { background-color: #fff; padding: 10px; border-bottom: 1px dashed #ddd; margin-bottom: 8px; border-left: 5px solid #ffc107; font-size: 0.95em; }
 
         .record-header { font-weight: bold; color: #d9534f; margin-right: 15px; }
-        .delete-btn { background-color: #d9534f; float: right; padding: 5px 10px; font-size: 0.8em; width: auto; margin-left: 10px; border: none; border-radius: 4px; color: white; cursor: pointer; }
-        .delete-all-btn { background-color: #d9534f !important; margin-bottom: 15px; }
-        .export-btn { background-color: #0099cc; margin-bottom: 15px; }
+        /* 讓 delete-btn 更好用 */
+        .delete-btn { 
+            background-color: #d9534f; 
+            float: right; 
+            padding: 5px 10px; 
+            font-size: 0.8em; 
+            width: auto; 
+            margin-left: 10px; 
+            border: none; 
+            border-radius: 4px; 
+            color: white; 
+            cursor: pointer; 
+            margin-top: 0; /* 覆蓋全域 button 樣式 */
+        }
+        .delete-all-btn { background-color: #d9534f !important; width: auto; margin-right: 10px; }
+        .export-btn { background-color: #0099cc; width: auto; margin-right: 10px; }
+        .refresh-btn { background-color: #6c757d; width: auto; margin-left: 10px; }
+        .logout-btn { background-color: #dc3545; width: auto; float: right; }
         .hidden { display: none; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 10px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        input[type="email"], input[type="password"] { width: 100%; padding: 10px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
         button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; box-sizing: border-box; margin-top: 10px; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>🧑‍💻 後台管理員登入</h1>
+        <h1>🧑‍💻 打卡系統後台管理</h1>
         
-        <div class="login-box">
-            <h2>管理員登入 (模擬)</h2>
-            <label for="admin-user">帳號：</label>
-            <input type="text" id="admin-user" placeholder="輸入管理員帳號 (例如: admin)">
+        <div id="login-stage" class="login-box">
+            <h2>管理員登入</h2>
+            <label for="admin-user">Email 帳號：</label>
+            <input type="email" id="admin-user" placeholder="輸入管理員註冊的 Email" required>
             
             <label for="admin-pass">密碼：</label>
-            <input type="password" id="admin-pass" placeholder="輸入密碼 (例如: 123456)">
+            <input type="password" id="admin-pass" placeholder="輸入密碼" required>
             
-            <button onclick="handleAdminLogin()">登入並查看數據</button>
-            <p id="admin-message" class="error-message"></p>
+            <button onclick="handleAdminLogin()">登入管理系統</button>
+            <p id="admin-message" class="error-message" style="margin-top: 10px; color: red;"></p>
         </div>
 
-        <div id="records-display" class="records-container hidden">
-            <h2>📋 所有打卡紀錄</h2>
-            <p>已從雲端載入所有打卡紀錄，按時間倒序排列：</p>
+        <div id="dashboard-stage" class="hidden">
+            <button onclick="handleAdminLogout()" class="logout-btn">🚪 登出</button>
             
-            <button onclick="exportCheckinsToCSV()" class="export-btn">📥 匯出 CSV 檔案</button>
-            <button onclick="deleteAllCheckInRecords()" class="delete-all-btn">❌ 刪除所有打卡紀錄 (不可復原)</button>
+            <div class="records-container" style="clear: both;">
+                <h2>📋 所有打卡紀錄</h2>
+                <p>已從雲端載入所有打卡紀錄，按時間倒序排列：</p>
+                
+                <button onclick="exportCheckinsToCSV()" class="export-btn">📥 匯出 CSV 檔案</button>
+                <button onclick="deleteAllCheckInRecords()" class="delete-all-btn">❌ 刪除所有紀錄 (不可復原)</button>
+                <button onclick="fetchCheckInRecords()" class="refresh-btn">🔄 重新整理打卡紀錄</button>
 
-            <ul id="records-list"></ul>
-            <button onclick="fetchCheckInRecords()">🔄 重新整理打卡紀錄</button>
-        </div>
+                <ul id="records-list"></ul>
+            </div>
 
-        <div id="users-display" class="users-container hidden">
-            <h2>👥 學生建檔紀錄 (Users)</h2>
-            <p>已建檔的學生列表 (密語儲存處)：</p>
+            <div class="users-container">
+                <h2>👥 學生建檔紀錄 (Users)</h2>
+                <p>已建檔的學生列表 (密語儲存處)：</p>
+                
+                <button onclick="fetchUserRecords()" style="background-color: #ffc107; color: #333; width: auto;">🔄 重新整理建檔紀錄</button>
+
+                <ul id="users-list"></ul>
+            </div>
             
-            <ul id="users-list"></ul>
-            <button onclick="fetchUserRecords()" style="background-color: #ffc107; color: #333;">🔄 重新整理建檔紀錄</button>
+            <a href="index.html"><button style="background-color: #6c757d; margin-top: 25px;">返回打卡頁面</button></a>
         </div>
-
-        <a href="index.html"><button style="background-color: #6c757d; margin-top: 25px;">返回打卡頁面</button></a>
     </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
-
-    <script src="admin.js" type="module"></script> 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script> 
+<script src="admin.js" type="module"></script> 
 </body>
 </html>
