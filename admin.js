@@ -27,7 +27,23 @@ function escapeHTML(str) {
     });
 }
 
+let count = 0;
 
+// 定義要重複執行的函數
+const repetitiveTask = () => {
+    count++;
+    // 這裡放置您想要重複印出的內容
+    console.log(`你是不是想加入學生會?幹嘛一直駭我`);
+    console.log(`Do you want to join the student council? Why are you constantly harassing me?`);
+   
+};
+
+// 設置定時器：每 3000 毫秒（即 3 秒）執行一次 repetitiveTask
+const intervalId = setInterval(repetitiveTask, 3000);
+
+// 提示：如何停止定時器
+console.log("定時器已啟動，每 3 秒執行一次。");
+console.log("若要停止定時器，請在控制台輸入：clearInterval(intervalId)");
 // ==========================================================
 // 2. Firebase SDK 導入與配置
 // ==========================================================
@@ -334,3 +350,4 @@ window.exportCheckinsToCSV = function() {
     
     adminMessage.textContent = `成功匯出 ${allCheckinsData.length} 筆紀錄到 CSV 檔案。`;
 };
+
