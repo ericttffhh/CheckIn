@@ -1,7 +1,35 @@
-// admin.js (最終修正版：使用 Fetch API 解決 CORS 問題)
+// admin.js (最終安全版：整合 CORS 修正與 XSS 防禦)
 
 // ==========================================================
-// 1. Firebase SDK 導入與配置
+// 1. 核心安全修正：XSS 輸出編碼函數
+// ==========================================================
+/**
+ * 預防 XSS 攻擊：將 HTML 特殊字符轉義為實體。
+ * 這是防止惡意代碼（如 <img onerror="...">）被執行的最有效方法。
+ * @param {string} str - 需要編碼的字符串
+ * @returns {string} - 編碼後的安全字符串
+ */
+function escapeHTML(str) {
+    if (typeof str !== 'string') {
+        // 確保非字符串類型（如數字、對象）不會出錯
+        return str; 
+    }
+    // 將五個常見的 HTML 特殊字符轉義為 HTML 實體
+    return str.replace(/[&<>"']/g, function(match) {
+        switch (match) {
+            case '&': return '&amp;';
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '"': return '&quot;';
+            case "'": return '&#39;';
+            default: return match;
+        }
+    });
+}
+
+
+// ==========================================================
+// 2. Firebase SDK 導入與配置
 // ==========================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -21,13 +49,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// 函數 URL 定義 (請確保這是您的 Firebase Functions 區域，如果不是 us-central1 請修改)
+// 函數 URL 定義 (請確保這是您的 Firebase Functions 區域)
 const FUNCTIONS_URL_BASE = "https://us-central1-classcheckinsystem.cloudfunctions.net/";
 const ADMIN_GET_RECORDS_URL = FUNCTIONS_URL_BASE + 'adminGetRecords';
 const ADMIN_DELETE_RECORDS_URL = FUNCTIONS_URL_BASE + 'adminDeleteRecords'; // 統一處理刪除
 
 // ==========================================================
-// 2. DOM 元素獲取
+// 3. DOM 元素獲取與狀態管理
 // ==========================================================
 const loginStage = document.getElementById('login-stage');
 const dashboardStage = document.getElementById('dashboard-stage');
@@ -38,7 +66,7 @@ const usersList = document.getElementById('users-list');
 let allCheckinsData = []; // 用於儲存打卡數據，以便匯出
 
 // ==========================================================
-// 3. 身份驗證 (Login/Logout)
+// 4. 身份驗證 (Login/Logout)
 // ==========================================================
 
 window.handleAdminLogin = async function() {
@@ -48,7 +76,6 @@ window.handleAdminLogin = async function() {
 
     try {
         await signInWithEmailAndPassword(auth, email, password);
-        // 登入成功，onAuthStateChanged 會處理後續操作
     } catch (error) {
         console.error("Login Error:", error);
         adminMessage.textContent = `登入失敗: ${getErrorMessage(error)}`;
@@ -100,14 +127,11 @@ function getErrorMessage(error) {
 }
 
 // ==========================================================
-// 4. 數據獲取與渲染 (核心：使用 Fetch API 解決 CORS)
+// 5. 數據獲取與渲染 (核心：使用 Fetch API 解決 CORS)
 // ==========================================================
 
 /**
  * 呼叫 Firebase onRequest Function 的通用邏輯
- * @param {string} url - 函數的完整 URL
- * @param {object} data - 傳遞給 Function req.body.data 的數據
- * @returns {Promise<object>} - 返回 Function 的 JSON 回應
  */
 async function callAdminFunction(url, data) {
     const user = auth.currentUser;
@@ -123,7 +147,7 @@ async function callAdminFunction(url, data) {
             // 身份驗證關鍵：將 Token 放入 Authorization 標頭
             'Authorization': `Bearer ${idToken}` 
         },
-        //onRequest 函數從 req.body.data 中獲取數據
+        // onRequest 函數從 req.body.data 中獲取數據
         body: JSON.stringify({ data: data }) 
     });
 
@@ -136,13 +160,12 @@ async function callAdminFunction(url, data) {
             // 優先顯示後端定義的錯誤訊息
             errorMessage = errorJson.message || errorMessage; 
         } catch (e) {
-             // 如果無法解析 JSON，可能是 Firebase 的原生錯誤，顯示原始錯誤碼
              errorMessage = `Functions 呼叫失敗 (${response.status} ${response.statusText}): ${errorText.substring(0, 50)}...`;
         }
         throw new Error(errorMessage);
     }
     
-    // 返回與 Callable Function 類似的結果結構 (包含 data 字段)
+    // 返回包含 data 字段的結果結構
     return await response.json(); 
 }
 
@@ -151,11 +174,10 @@ async function fetchRecords(collectionName, listElement) {
     adminMessage.textContent = '';
     
     try {
-        // 呼叫 adminGetRecords (現已為 onRequest 函數)
         const response = await callAdminFunction(ADMIN_GET_RECORDS_URL, { collectionName });
         const records = response.data; // 讀取後端返回的 data 字段
         
-        // 排序：打卡紀錄按 timestamp 倒序，用戶紀錄按學號排序
+        // 排序邏輯
         if (collectionName === 'checkins') {
             records.sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
             allCheckinsData = records; 
@@ -173,33 +195,51 @@ async function fetchRecords(collectionName, listElement) {
             const li = document.createElement('li');
             li.setAttribute('data-doc-id', record.id); 
 
+            // 確保 docId 也是安全字串
+            const safeDocId = escapeHTML(record.id); 
+            const safeCollectionName = escapeHTML(collectionName);
+            let deleteBtn = `<button class="delete-btn" onclick="deleteSingleRecord('${safeCollectionName}', '${safeDocId}')">刪除</button>`;
             let content = '';
-            // 使用 adminDeleteRecords 進行單條刪除
-            let deleteBtn = `<button class="delete-btn" onclick="deleteSingleRecord('${collectionName}', '${record.id}')">刪除</button>`;
 
+            // ❗❗ XSS 修復點：對所有數據使用 escapeHTML 函數 ❗❗
             if (collectionName === 'checkins') {
                 const dateString = new Date(record.timestamp.seconds * 1000).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+                
+                // 對所有可能包含用戶輸入的欄位進行編碼
+                const safeCheckinDate = escapeHTML(record.checkinDate); 
+                const safeClassName = escapeHTML(record.className);
+                const safeName = escapeHTML(record.name);
+                const safeStudentId = escapeHTML(record.studentId);
+                const safeSection = escapeHTML(record.section);
+                
                 content = `
-                    <span class="record-header">${record.checkinDate} ${dateString.split(' ')[1]}</span>
-                    [${record.className} ${record.name} (${record.studentId})] 
-                    <br> 打卡節次: ${record.section}
+                    <span class="record-header">${safeCheckinDate} ${dateString.split(' ')[1]}</span>
+                    [${safeClassName} ${safeName} (${safeStudentId})] 
+                    <br> 打卡節次: ${safeSection}
                 `;
             } else { // users
+                // 對所有用戶數據進行編碼
+                const safeStudentId = escapeHTML(record.studentId);
+                const safeName = escapeHTML(record.name);
+                const safeClassName = escapeHTML(record.className);
+                
                 content = `
-                    <span class="record-header">學號: ${record.studentId}</span>
-                    姓名: ${record.name} | 班級: ${record.className} 
+                    <span class="record-header">學號: ${safeStudentId}</span>
+                    姓名: ${safeName} | 班級: ${safeClassName} 
                     <br> 建檔時間: ${new Date(record.createdAt.seconds * 1000).toLocaleDateString('zh-TW')}
                 `;
             }
 
+            // 使用 innerHTML 確保拼接的內容是安全淨化過的
             li.innerHTML = deleteBtn + content;
             listElement.appendChild(li);
         });
 
     } catch (error) {
         console.error("Fetch Records Error:", error);
-        adminMessage.textContent = `載入 ${collectionName} 數據失敗: ${error.message}`;
-        listElement.innerHTML = `<li>載入錯誤：${error.message}</li>`;
+        // 確保錯誤訊息也被編碼
+        adminMessage.textContent = escapeHTML(`載入 ${collectionName} 數據失敗: ${error.message}`);
+        listElement.innerHTML = `<li>載入錯誤：${escapeHTML(error.message)}</li>`;
     }
 }
 
@@ -208,7 +248,7 @@ window.fetchUserRecords = () => fetchRecords('users', usersList);
 
 
 // ==========================================================
-// 5. 數據刪除操作 (使用 Fetch API 呼叫 adminDeleteRecords)
+// 6. 數據刪除操作 (使用 Fetch API 呼叫 adminDeleteRecords)
 // ==========================================================
 
 window.deleteSingleRecord = async function(collectionName, docId) {
@@ -249,7 +289,7 @@ window.deleteAllCheckInRecords = async function() {
 };
 
 // ==========================================================
-// 6. CSV 匯出功能
+// 7. CSV 匯出功能
 // ==========================================================
 
 window.exportCheckinsToCSV = function() {
@@ -268,6 +308,7 @@ window.exportCheckinsToCSV = function() {
         const datePart = dateObj.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' });
         const timePart = dateObj.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
 
+        // 對 CSV 數據使用雙引號包裹，以確保數據中的逗號不會破壞格式
         const row = [
             `"${record.checkinDate || 'N/A'}"`, 
             `"${timePart}"`,
