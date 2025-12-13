@@ -3,7 +3,7 @@
 // ==========================================================
 // 注意：由於 HTML 中使用了 type="module"，這裡的 import 必須使用完整路徑
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js"; 
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js"; 
 
 // ❗❗❗❗ 請將以下替換為您的 Firebase 專案配置 ❗❗❗❗
 const firebaseConfig = {
@@ -17,12 +17,12 @@ const firebaseConfig = {
 
 // 初始化 Firebase 應用程式和 Functions
 const app = initializeApp(firebaseConfig);
-// ❗ 核心檢查點：請確認 'us-central1' 是否為您 Functions 的實際部署地區
-const functions = getFunctions(app, 'us-central1'); 
+const functions = getFunctions(app, 'us-central1'); 
 
 // 獲取 Callable Functions 的參考
 const secureUserSignup = httpsCallable(functions, 'secureUserSignup');
-const secureCheckIn = httpsCallable(functions, 'secureCheckIn');
+// ❗ 關鍵修正：secureCheckIn 已改為 HTTP Function，不再是 Callable ❗
+// const secureCheckIn = httpsCallable(functions, 'secureCheckIn'); 
 
 
 // ==========================================================
@@ -80,7 +80,7 @@ window.showInfoStage = function() {
 };
 
 window.resetData = function() {
-    window.location.reload(); 
+    window.location.reload(); 
 };
 
 window.toggleManualMode = function() {
@@ -131,25 +131,23 @@ infoForm.addEventListener('submit', async function(e) {
     }
 
     const signupData = { 
-        // 修正：因為上面已經 trim() 了，這裡只需 sanitize
         password: sanitizeInput(password), 
         className: sanitizeInput(classValue),
         name: sanitizeInput(name),
         studentId: sanitizeInput(studentId).toUpperCase()
     };
     
-    // ❗ 建議：在正式提交前再次確認資料是否正確 ❗
     console.log('--- 準備提交建檔資料 ---');
     console.log(signupData);
 
     try {
-        // 使用 httpsCallable 呼叫 Function
+        // 使用 httpsCallable 呼叫 secureUserSignup
         const response = await secureUserSignup(signupData); 
         const result = response.data; // Callable Function 的結果在 response.data 中
 
         if (result && result.success) { 
             console.log('建檔成功，準備打卡...');
-            // 由於建檔成功，我們知道密語是有效的，直接用該密語進行第一次打卡
+            // 由於建檔成功，直接用該密語進行第一次打卡
             await performCheckIn(signupData.password); 
 
         } else {
@@ -161,7 +159,6 @@ infoForm.addEventListener('submit', async function(e) {
 
     } catch (error) {
         // 處理網路錯誤或 Function 內部拋出的錯誤
-        // 確保我們顯示 Firebase SDK 傳遞的錯誤訊息
         passwordError.textContent = `操作失敗: ${error.message || '請檢查網路連線。'}`;
         console.error('Function 呼叫錯誤:', error);
     }
@@ -192,22 +189,34 @@ async function performCheckIn(password) {
         return;
     }
     
-    const checkinData = { 
+    // 這是實際傳遞給 HTTP Function 的 payload
+    const checkinDataPayload = { 
         password: sanitizeInput(password),
-        sections: sections, 
-        date: date          
+        sections: sections, 
+        date: date          
     };
 
     try {
-        const response = await secureCheckIn(checkinData);
-        const result = response.data; 
+        // ❗ 關鍵修正：使用標準 fetch 呼叫 HTTP Function ❗
+        const response = await fetch('https://us-central1-classcheckinsystem.cloudfunctions.net/secureCheckIn', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            // 必須將 payload 包裝在 'data' 屬性中，以符合後端解析 (req.body.data)
+            body: JSON.stringify({ data: checkinDataPayload }) 
+        });
+        
+        // 解析 JSON 響應
+        const result = await response.json(); 
 
-        if (result && result.success) {
-            displaySuccess(result); 
+        if (response.ok && result && result.success) { // 檢查 HTTP 狀態碼和結果
+            displaySuccess(result); 
         } else {
+            // 處理非 200 狀態碼或 success: false 的情況
             const errorMsg = result ? (result.message || '密語無效或系統錯誤') : '伺服器響應失敗';
             passwordError.textContent = `打卡失敗: ${errorMsg}。請確認密語是否正確。`;
-            console.error('打卡失敗詳情:', response);
+            console.error('打卡失敗詳情:', result);
         }
 
     } catch (error) {
@@ -218,12 +227,15 @@ async function performCheckIn(password) {
 
 function getSectionsToCheckIn() {
     if (!isManualMode) {
-        return []; 
+        // 在自動模式下，您可以根據時間邏輯返回當前節次，
+        // 這裡為了保持簡單，我們先讓後端處理，但前端仍需傳遞一個空陣列
+        // 如果您有前端時間判斷邏輯，請在這裡實作。
+        return []; 
     }
     
     const selectedSections = [];
     document.querySelectorAll('input[name="manual_section"]:checked').forEach(checkbox => {
-        selectedSections.push(sanitizeInput(checkbox.value)); 
+        selectedSections.push(sanitizeInput(checkbox.value)); 
     });
     return selectedSections;
 }
@@ -247,9 +259,9 @@ function displaySuccess(data) {
     
     document.getElementById('display-date').textContent = data.checkInDate || 'N/A';
     document.getElementById('display-section').textContent = data.section || 'N/A';
-    document.getElementById('display-timestamp').textContent = timeString; 
+    document.getElementById('display-timestamp').textContent = timeString; 
 
-    passwordInput.value = ''; 
+    passwordInput.value = ''; 
 }
 
 // ==========================================================
@@ -262,4 +274,3 @@ window.checkPassword = checkPassword;
 window.resetData = resetData;
 window.showInfoStage = showInfoStage;
 window.toggleManualMode = toggleManualMode;
-
