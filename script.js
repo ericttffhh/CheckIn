@@ -111,33 +111,46 @@ window.toggleManualMode = function() {
 
 infoForm.addEventListener('submit', async function(e) {
     e.preventDefault();
-    passwordError.textContent = '';
+    passwordError.textContent = ''; // 清除舊錯誤
 
-    const password = document.getElementById('personal-password-input').value;
-    const classValue = document.getElementById('class-input').value;
-    const name = document.getElementById('name-input').value;
-    const studentId = document.getElementById('student-id-input').value;
+    const password = document.getElementById('personal-password-input').value.trim(); // 確保去除前後空白
+    const classValue = document.getElementById('class-input').value.trim();
+    const name = document.getElementById('name-input').value.trim();
+    const studentId = document.getElementById('student-id-input').value.trim();
     
+    // ❗ 關鍵修正：檢查所有欄位是否為空 ❗
+    if (!password || !classValue || !name || !studentId) {
+        passwordError.textContent = '請填寫所有建檔欄位 (密語、班級、姓名、學號)！';
+        return;
+    }
+    
+    // 密語長度檢查
     if (password.length < 6) {
         passwordError.textContent = '密語長度必須至少為 6 位數。';
         return;
     }
 
-    const signupData = { 
-        password: sanitizeInput(password), 
+    const signupData = { 
+        // 修正：因為上面已經 trim() 了，這裡只需 sanitize
+        password: sanitizeInput(password), 
         className: sanitizeInput(classValue),
         name: sanitizeInput(name),
         studentId: sanitizeInput(studentId).toUpperCase()
     };
+    
+    // ❗ 建議：在正式提交前再次確認資料是否正確 ❗
+    console.log('--- 準備提交建檔資料 ---');
+    console.log(signupData);
 
     try {
         // 使用 httpsCallable 呼叫 Function
-        const response = await secureUserSignup(signupData); 
+        const response = await secureUserSignup(signupData); 
         const result = response.data; // Callable Function 的結果在 response.data 中
 
-        if (result && result.success) { 
+        if (result && result.success) { 
             console.log('建檔成功，準備打卡...');
-            await performCheckIn(signupData.password); 
+            // 由於建檔成功，我們知道密語是有效的，直接用該密語進行第一次打卡
+            await performCheckIn(signupData.password); 
 
         } else {
             // Function 執行失敗，顯示後端返回的錯誤訊息
@@ -147,12 +160,12 @@ infoForm.addEventListener('submit', async function(e) {
         }
 
     } catch (error) {
-        // 處理網路錯誤或 Function 內部拋出的錯誤 (亂碼問題通常在這裡被 Firebase SDK 處理)
+        // 處理網路錯誤或 Function 內部拋出的錯誤
+        // 確保我們顯示 Firebase SDK 傳遞的錯誤訊息
         passwordError.textContent = `操作失敗: ${error.message || '請檢查網路連線。'}`;
         console.error('Function 呼叫錯誤:', error);
     }
 });
-
 
 // ==========================================================
 // 6. 處理密語打卡 (secureCheckIn)
@@ -249,3 +262,4 @@ window.checkPassword = checkPassword;
 window.resetData = resetData;
 window.showInfoStage = showInfoStage;
 window.toggleManualMode = toggleManualMode;
+
