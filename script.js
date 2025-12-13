@@ -1,13 +1,13 @@
 // ==========================================================
 // 1. Firebase SDK 導入與配置
 // ==========================================================
+// 注意：由於 HTML 中使用了 type="module"，這裡的 import 必須使用完整路徑
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-// ❗ 核心修正：導入 Functions SDK 進行 Callable Function 呼叫
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js"; 
 
 // ❗❗❗❗ 請將以下替換為您的 Firebase 專案配置 ❗❗❗❗
 const firebaseConfig = {
-    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c",
+    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c", // 請確認這個金鑰是否正確
     authDomain: "classcheckinsystem.firebaseapp.com",
     projectId: "classcheckinsystem",
     storageBucket: "classcheckinsystem.firebasestorage.app",
@@ -17,7 +17,7 @@ const firebaseConfig = {
 
 // 初始化 Firebase 應用程式和 Functions
 const app = initializeApp(firebaseConfig);
-// ❗ 請確認地區 (Region) 與您部署 Functions 的地區一致，預設為 'us-central1'
+// ❗ 核心檢查點：請確認 'us-central1' 是否為您 Functions 的實際部署地區
 const functions = getFunctions(app, 'us-central1'); 
 
 // 獲取 Callable Functions 的參考
@@ -42,16 +42,12 @@ let isManualMode = false;
 
 
 // ==========================================================
-// 3. 核心安全防禦函數
+// 3. 核心安全防禦函數 (淨化輸入)
 // ==========================================================
 
-/**
- * 淨化輸入字串，轉義潛在的 HTML 標籤符號，防止 XSS 攻擊。
- */
 function sanitizeInput(input) {
     if (!input) return '';
     let cleanString = String(input).trim();
-    // 轉義 HTML 特殊字符
     cleanString = cleanString.replace(/&/g, '&amp;')
                              .replace(/</g, '&lt;')
                              .replace(/>/g, '&gt;')
@@ -67,8 +63,8 @@ function sanitizeInput(input) {
 // ==========================================================
 
 function initializeMode() {
+    // 初始化日期輸入框為今天
     const today = new Date();
-    // 格式化日期為 YYYY-MM-DD
     const y = today.getFullYear();
     const m = String(today.getMonth() + 1).padStart(2, '0');
     const d = String(today.getDate()).padStart(2, '0');
@@ -84,7 +80,6 @@ window.showInfoStage = function() {
 };
 
 window.resetData = function() {
-    // 重載頁面確保所有狀態被清除
     window.location.reload(); 
 };
 
@@ -118,7 +113,6 @@ infoForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     passwordError.textContent = '';
 
-    // 讀取並淨化輸入
     const password = document.getElementById('personal-password-input').value;
     const classValue = document.getElementById('class-input').value;
     const name = document.getElementById('name-input').value;
@@ -137,14 +131,12 @@ infoForm.addEventListener('submit', async function(e) {
     };
 
     try {
-        // ❗ 使用 httpsCallable 呼叫 Function
+        // 使用 httpsCallable 呼叫 Function
         const response = await secureUserSignup(signupData); 
         const result = response.data; // Callable Function 的結果在 response.data 中
 
         if (result && result.success) { 
             console.log('建檔成功，準備打卡...');
-            
-            // Function 成功後，立即用該密語進行打卡
             await performCheckIn(signupData.password); 
 
         } else {
@@ -155,7 +147,7 @@ infoForm.addEventListener('submit', async function(e) {
         }
 
     } catch (error) {
-        // 處理網路錯誤或 Function 內部拋出的錯誤
+        // 處理網路錯誤或 Function 內部拋出的錯誤 (亂碼問題通常在這裡被 Firebase SDK 處理)
         passwordError.textContent = `操作失敗: ${error.message || '請檢查網路連線。'}`;
         console.error('Function 呼叫錯誤:', error);
     }
@@ -194,16 +186,12 @@ async function performCheckIn(password) {
     };
 
     try {
-        // ❗ 使用 httpsCallable 呼叫 Function
         const response = await secureCheckIn(checkinData);
-        
         const result = response.data; 
 
         if (result && result.success) {
-            // 打卡成功，Function 返回的 data 包含打卡和用戶資訊
             displaySuccess(result); 
         } else {
-            // 打卡失敗
             const errorMsg = result ? (result.message || '密語無效或系統錯誤') : '伺服器響應失敗';
             passwordError.textContent = `打卡失敗: ${errorMsg}。請確認密語是否正確。`;
             console.error('打卡失敗詳情:', response);
@@ -215,10 +203,9 @@ async function performCheckIn(password) {
     }
 }
 
-/** 獲取要打卡的節次列表 */
 function getSectionsToCheckIn() {
     if (!isManualMode) {
-        return []; // 自動模式下，Functions 會自動判斷
+        return []; 
     }
     
     const selectedSections = [];
@@ -233,9 +220,6 @@ function getSectionsToCheckIn() {
 // 7. 顯示成功結果
 // ==========================================================
 
-/** * 顯示打卡成功畫面
- * @param {object} data - 來自 Function 的成功響應數據 (包含用戶和打卡資訊)
- */
 function displaySuccess(data) {
     passwordStage.classList.add('hidden');
     infoStage.classList.add('hidden');
@@ -244,7 +228,6 @@ function displaySuccess(data) {
     const now = new Date();
     const timeString = now.toLocaleTimeString('zh-TW', { hour12: false });
     
-    // 填充結果資訊 (使用 Function 返回的數據)
     document.getElementById('display-class').textContent = data.className || 'N/A';
     document.getElementById('display-name').textContent = data.name || 'N/A';
     document.getElementById('display-student-id').textContent = data.studentId || 'N/A';
@@ -262,7 +245,6 @@ function displaySuccess(data) {
 
 document.addEventListener('DOMContentLoaded', initializeMode);
 
-// 綁定到 window 
 window.checkPassword = checkPassword;
 window.resetData = resetData;
 window.showInfoStage = showInfoStage;
