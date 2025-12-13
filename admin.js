@@ -1,32 +1,30 @@
-// admin.js
+// admin.js (最終修正版：使用 Fetch API 解決 CORS 問題)
 
 // ==========================================================
 // 1. Firebase SDK 導入與配置
 // ==========================================================
-// 導入 Auth, Firestore 和 Functions
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js"; 
+// 不再需要導入 firebase-functions SDK
 
 // ❗❗❗❗ 請將以下替換為您的 Firebase 專案配置 ❗❗❗❗
 const firebaseConfig = {
-    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c", 
-    authDomain: "classcheckinsystem.firebaseapp.com",
-    projectId: "classcheckinsystem",
-    storageBucket: "classcheckinsystem.firebasestorage.app",
-    messagingSenderId: "592387609788",
-    appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
+    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c", 
+    authDomain: "classcheckinsystem.firebaseapp.com",
+    projectId: "classcheckinsystem",
+    storageBucket: "classcheckinsystem.firebasestorage.app",
+    messagingSenderId: "592387609788",
+    appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
 };
 
 // 初始化 Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const functions = getFunctions(app, 'us-central1'); 
 
-// Callable Functions 參考
-const adminGetRecords = httpsCallable(functions, 'adminGetRecords');
-const deleteRecordById = httpsCallable(functions, 'deleteRecordById');
-const deleteAllRecordsInCollection = httpsCallable(functions, 'deleteAllRecordsInCollection');
+// 函數 URL 定義 (請確保這是您的 Firebase Functions 區域，如果不是 us-central1 請修改)
+const FUNCTIONS_URL_BASE = "https://us-central1-classcheckinsystem.cloudfunctions.net/";
+const ADMIN_GET_RECORDS_URL = FUNCTIONS_URL_BASE + 'adminGetRecords';
+const ADMIN_DELETE_RECORDS_URL = FUNCTIONS_URL_BASE + 'adminDeleteRecords'; // 統一處理刪除
 
 // ==========================================================
 // 2. DOM 元素獲取
@@ -49,7 +47,7 @@ window.handleAdminLogin = async function() {
     adminMessage.textContent = '登入中...';
 
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, email, password);
         // 登入成功，onAuthStateChanged 會處理後續操作
     } catch (error) {
         console.error("Login Error:", error);
@@ -102,21 +100,65 @@ function getErrorMessage(error) {
 }
 
 // ==========================================================
-// 4. 數據獲取與渲染
+// 4. 數據獲取與渲染 (核心：使用 Fetch API 解決 CORS)
 // ==========================================================
+
+/**
+ * 呼叫 Firebase onRequest Function 的通用邏輯
+ * @param {string} url - 函數的完整 URL
+ * @param {object} data - 傳遞給 Function req.body.data 的數據
+ * @returns {Promise<object>} - 返回 Function 的 JSON 回應
+ */
+async function callAdminFunction(url, data) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("用戶未登入。");
+
+    // 獲取當前用戶的 ID Token，用於後端身份驗證
+    const idToken = await user.getIdToken();
+    
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            // 身份驗證關鍵：將 Token 放入 Authorization 標頭
+            'Authorization': `Bearer ${idToken}` 
+        },
+        //onRequest 函數從 req.body.data 中獲取數據
+        body: JSON.stringify({ data: data }) 
+    });
+
+    if (!response.ok) {
+        // 嘗試解析錯誤訊息
+        const errorText = await response.text();
+        let errorMessage = `HTTP 錯誤：狀態碼 ${response.status}。`;
+        try {
+            const errorJson = JSON.parse(errorText);
+            // 優先顯示後端定義的錯誤訊息
+            errorMessage = errorJson.message || errorMessage; 
+        } catch (e) {
+             // 如果無法解析 JSON，可能是 Firebase 的原生錯誤，顯示原始錯誤碼
+             errorMessage = `Functions 呼叫失敗 (${response.status} ${response.statusText}): ${errorText.substring(0, 50)}...`;
+        }
+        throw new Error(errorMessage);
+    }
+    
+    // 返回與 Callable Function 類似的結果結構 (包含 data 字段)
+    return await response.json(); 
+}
 
 async function fetchRecords(collectionName, listElement) {
     listElement.innerHTML = '<li>載入中...</li>';
     adminMessage.textContent = '';
     
     try {
-        const response = await adminGetRecords({ collectionName });
-        const records = response.data;
+        // 呼叫 adminGetRecords (現已為 onRequest 函數)
+        const response = await callAdminFunction(ADMIN_GET_RECORDS_URL, { collectionName });
+        const records = response.data; // 讀取後端返回的 data 字段
         
         // 排序：打卡紀錄按 timestamp 倒序，用戶紀錄按學號排序
         if (collectionName === 'checkins') {
             records.sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
-            allCheckinsData = records; // 儲存數據用於匯出
+            allCheckinsData = records; 
         } else {
             records.sort((a, b) => a.studentId.localeCompare(b.studentId));
         }
@@ -129,9 +171,10 @@ async function fetchRecords(collectionName, listElement) {
 
         records.forEach(record => {
             const li = document.createElement('li');
-            li.setAttribute('data-doc-id', record.id); // 儲存文件 ID
+            li.setAttribute('data-doc-id', record.id); 
 
             let content = '';
+            // 使用 adminDeleteRecords 進行單條刪除
             let deleteBtn = `<button class="delete-btn" onclick="deleteSingleRecord('${collectionName}', '${record.id}')">刪除</button>`;
 
             if (collectionName === 'checkins') {
@@ -165,17 +208,18 @@ window.fetchUserRecords = () => fetchRecords('users', usersList);
 
 
 // ==========================================================
-// 5. 數據刪除操作
+// 5. 數據刪除操作 (使用 Fetch API 呼叫 adminDeleteRecords)
 // ==========================================================
 
 window.deleteSingleRecord = async function(collectionName, docId) {
     if (!confirm(`確定要刪除這筆 ${collectionName} 記錄嗎？ (ID: ${docId})`)) return;
 
     try {
-        const response = await deleteRecordById({ collectionName, docId });
+        // 呼叫 adminDeleteRecords，帶有 docId
+        const response = await callAdminFunction(ADMIN_DELETE_RECORDS_URL, { collectionName, docId });
         adminMessage.textContent = response.data.message;
         
-        // 刪除成功後重新整理列表
+        // 重新整理列表
         if (collectionName === 'checkins') {
             fetchCheckInRecords();
         } else {
@@ -192,10 +236,10 @@ window.deleteAllCheckInRecords = async function() {
     if (!confirm('!!! 警告 !!! 確定要刪除所有打卡紀錄嗎？此操作不可復原！')) return;
 
     try {
-        const response = await deleteAllRecordsInCollection({ collectionName: 'checkins' });
+        // 呼叫 adminDeleteRecords，不帶 docId，進行批次刪除
+        const response = await callAdminFunction(ADMIN_DELETE_RECORDS_URL, { collectionName: 'checkins' });
         adminMessage.textContent = response.data.message;
         
-        // 刪除成功後重新整理列表
         fetchCheckInRecords();
         
     } catch (error) {
