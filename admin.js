@@ -1,338 +1,251 @@
-// 引入 Firebase SDK 模組 (v10.12.2)
-import { 
-    initializeApp 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+// admin.js
 
-import { 
-    getFirestore, 
-    collection, 
-    getDocs, 
-    query, 
-    orderBy, 
-    doc, 
-    deleteDoc, 
-    writeBatch 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-// 🚨 引入 Firebase Auth 模組
-import { 
-    getAuth, 
-    signInWithEmailAndPassword,
-    signOut 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
+// ==========================================================
+// 1. Firebase SDK 導入與配置
+// ==========================================================
+// 導入 Auth, Firestore 和 Functions
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js"; 
 
 // ❗❗❗❗ 請將以下替換為您的 Firebase 專案配置 ❗❗❗❗
 const firebaseConfig = {
-    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c", // 請確認這是否為您的金鑰
-    authDomain: "classcheckinsystem.firebaseapp.com",
-    projectId: "classcheckinsystem",
-    storageBucket: "classcheckinsystem.firebasestorage.app",
-    messagingSenderId: "592387609788",
-    appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
+    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c", 
+    authDomain: "classcheckinsystem.firebaseapp.com",
+    projectId: "classcheckinsystem",
+    storageBucket: "classcheckinsystem.firebasestorage.app",
+    messagingSenderId: "592387609788",
+    appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
 };
 
-// 初始化 Firebase 服務
+// 初始化 Firebase
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app); 
-const checkinsCol = collection(db, "checkins"); // 打卡紀錄
-const usersCol = collection(db, "users"); // 建檔紀錄
+const auth = getAuth(app);
+const functions = getFunctions(app, 'us-central1'); 
 
+// Callable Functions 參考
+const adminGetRecords = httpsCallable(functions, 'adminGetRecords');
+const deleteRecordById = httpsCallable(functions, 'deleteRecordById');
+const deleteAllRecordsInCollection = httpsCallable(functions, 'deleteAllRecordsInCollection');
 
-// ----------------------------------------------------------------------
-// ❗ 核心安全防禦函數：XSS 輸出編碼 (Output Encoding) ❗
-// ----------------------------------------------------------------------
-/**
- * 使用 DOM textContent 屬性安全地對字串進行 HTML 轉義，
- * 防止在將資料庫讀取的內容寫入 innerHTML 時發生 XSS 攻擊。
- * @param {string} str - 從資料庫讀取的字串
- * @returns {string} - 安全的 HTML 實體編碼字串
- */
-function escapeHTML(str) {
-    if (str === null || str === undefined) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
+// ==========================================================
+// 2. DOM 元素獲取
+// ==========================================================
+const loginStage = document.getElementById('login-stage');
+const dashboardStage = document.getElementById('dashboard-stage');
+const adminMessage = document.getElementById('admin-message');
+const recordsList = document.getElementById('records-list');
+const usersList = document.getElementById('users-list');
 
+let allCheckinsData = []; // 用於儲存打卡數據，以便匯出
 
-// ----------------------------------------------------------------------
-// I. 登入與介面切換
-// ----------------------------------------------------------------------
+// ==========================================================
+// 3. 身份驗證 (Login/Logout)
+// ==========================================================
 
-/**
- * 處理管理員登入 (使用 Firebase Auth)
- */
-export async function handleAdminLogin() {
+window.handleAdminLogin = async function() {
     const email = document.getElementById('admin-user').value;
-    const pass = document.getElementById('admin-pass').value;
-    const message = document.getElementById('admin-message');
-    
-    message.textContent = "正在登入...";
-    message.style.color = 'blue';
+    const password = document.getElementById('admin-pass').value;
+    adminMessage.textContent = '登入中...';
 
     try {
-        await signInWithEmailAndPassword(auth, email, pass);
-        // 登入成功後，onAuthStateChanged 會自動處理介面切換和資料載入
-        message.textContent = "登入成功！";
-
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        // 登入成功，onAuthStateChanged 會處理後續操作
     } catch (error) {
-        let errorMsg = "登入失敗：請檢查帳號密碼。";
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-             errorMsg = "帳號或密碼錯誤。";
-        } else if (error.code === 'auth/network-request-failed') {
-             errorMsg = "網路連線錯誤，請檢查網路。";
-        }
-        console.error("Firebase 登入失敗: ", error);
-        message.textContent = errorMsg;
-        message.style.color = 'red';
+        console.error("Login Error:", error);
+        adminMessage.textContent = `登入失敗: ${getErrorMessage(error)}`;
     }
-}
+};
 
-/**
- * 登出管理員
- */
-export async function handleAdminLogout() {
+window.handleAdminLogout = async function() {
     await signOut(auth);
-    window.location.reload(); // 重載頁面以返回登入介面
-}
+    adminMessage.textContent = '';
+};
 
+// 狀態監聽器：判斷是否登入並具有管理員權限
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        // 取得 ID Token，檢查 Custom Claim
+        const idTokenResult = await user.getIdTokenResult(true);
 
-// ----------------------------------------------------------------------
-// II. 資料獲取與顯示
-// ----------------------------------------------------------------------
-
-/**
- * 從 Firestore 獲取所有學生建檔紀錄。
- */
-export async function fetchUserRecords() {
-    const usersList = document.getElementById('users-list');
-    usersList.innerHTML = '<li>正在從雲端載入建檔數據...</li>';
-    
-    if (!auth.currentUser) return; // 確保已登入
-
-    try {
-        const q = query(usersCol, orderBy("studentId", "asc"));
-        const querySnapshot = await getDocs(q);
-
-        usersList.innerHTML = '';
-        
-        if (querySnapshot.empty) {
-            usersList.innerHTML = '<li>目前沒有任何學生建檔紀錄。</li>';
-            return;
-        }
-
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            
-            // ❗ 關鍵防禦：使用 escapeHTML 淨化所有從資料庫讀取的輸出內容
-            const listItem = document.createElement('li');
-            listItem.innerHTML = `
-                🆔 <strong>${escapeHTML(data.studentId)}</strong> | 
-                👤 ${escapeHTML(data.name)} (${escapeHTML(data.className)})
-                <br>
-                🔑 密語: <span style="color: #d9534f; font-weight: bold;">${escapeHTML(data.password)}</span>
-            `;
-            usersList.appendChild(listItem);
-        });
-
-    } catch (error) {
-        console.error("讀取建檔紀錄失敗: ", error);
-        usersList.innerHTML = '<li>讀取建檔數據時發生錯誤。請確認您的 Firestore 規則已允許管理員讀取。</li>';
-    }
-}
-
-
-/**
- * 從 Firestore 獲取所有打卡紀錄，並在後台顯示。
- */
-export async function fetchCheckInRecords() {
-    const recordsList = document.getElementById('records-list');
-    recordsList.innerHTML = '<li>正在從雲端載入所有數據...</li>';
-
-    if (!auth.currentUser) return; // 確保已登入
-
-    try {
-        const q = query(checkinsCol, orderBy("timestamp", "desc"));
-        const querySnapshot = await getDocs(q);
-
-        recordsList.innerHTML = '';
-        
-        if (querySnapshot.empty) {
-            recordsList.innerHTML = '<li>目前沒有任何打卡紀錄。</li>';
-            return;
-        }
-
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            const docId = doc.id; 
-            
-            const date = data.timestamp ? data.timestamp.toDate().toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'medium', hour12: false }) : 'N/A';
-            const checkinDateDisplay = data.checkinDate ? data.checkinDate : 'N/A'; 
-            
-            // ❗ 關鍵防禦：使用 escapeHTML 淨化所有從資料庫讀取的輸出內容
-            const safeName = escapeHTML(data.name);
-            const safeStudentId = escapeHTML(data.studentId);
-            const safeClassName = escapeHTML(data.className);
-            const safeSection = escapeHTML(data.section);
-
-            const listItem = document.createElement('li');
-            listItem.innerHTML = `
-                <span class="record-header">${date}</span> | 
-                <strong>${safeName}</strong> (${safeStudentId}) - ${safeClassName}
-                
-                <button onclick="deleteSingleCheckInRecord('${docId}')" class="delete-btn">
-                    單筆刪除
-                </button>
-                <br>
-                **紀錄日期: ${checkinDateDisplay}** | 節次: ${safeSection}
-            `;
-            recordsList.appendChild(listItem);
-        });
-
-    } catch (error) {
-        console.error("讀取後台紀錄失敗: ", error);
-        recordsList.innerHTML = '<li>讀取數據時發生錯誤，請檢查您的網路或 Firestore 規則。</li>';
-    }
-}
-
-
-// ----------------------------------------------------------------------
-// III. 資料操作 (刪除與匯出)
-// ----------------------------------------------------------------------
-
-export async function deleteSingleCheckInRecord(docId) {
-    if (!auth.currentUser || !confirm("確定要刪除這筆打卡紀錄嗎？此操作不可復原。")) {
-        return;
-    }
-
-    try {
-        await deleteDoc(doc(db, "checkins", docId));
-        alert("單筆紀錄刪除成功！");
-        fetchCheckInRecords(); 
-    } catch (error) {
-        console.error("刪除單筆紀錄失敗: ", error);
-        alert("刪除失敗：權限不足或資料庫連線錯誤。");
-    }
-}
-
-
-export async function deleteAllCheckInRecords() {
-    if (!auth.currentUser || !confirm("⚠️ 警告：您確定要刪除所有打卡紀錄嗎？此操作不可復原且影響巨大！")) {
-        return;
-    }
-    
-    try {
-        const querySnapshot = await getDocs(checkinsCol);
-        if (querySnapshot.empty) {
-            alert("目前資料庫中沒有任何紀錄可以刪除。");
-            return;
-        }
-        
-        const batch = writeBatch(db);
-        let count = 0;
-        querySnapshot.forEach((doc) => {
-            batch.delete(doc.ref); 
-            count++;
-        });
-
-        await batch.commit();
-        alert(`成功刪除所有 ${count} 筆打卡紀錄！`);
-        fetchCheckInRecords(); 
-    } catch (error) {
-        console.error("刪除所有紀錄失敗: ", error);
-        alert("刪除所有紀錄失敗：請檢查網路或 Firebase 權限。");
-    }
-}
-
-
-export async function exportCheckinsToCSV() {
-    if (!auth.currentUser) {
-        alert('請先登入管理員帳號。');
-        return;
-    }
-    
-    try {
-        const q = query(checkinsCol, orderBy("timestamp", "desc"));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            alert("目前沒有任何打卡紀錄可以匯出。");
-            return;
-        }
-
-        let csv = "姓名,學號,班級,打卡日期,節次,資料庫記錄時間\n";
-        
-        const escapeCsvField = (field) => `"${String(field).replace(/"/g, '""')}"`;
-
-        querySnapshot.forEach((doc) => {
-            const data = doc.data();
-            
-            const timestamp = data.timestamp ? 
-                data.timestamp.toDate().toLocaleString('zh-TW', { timeZoneName: 'short' }) : 
-                'N/A';
-            
-            const checkinDate = data.checkinDate || 'N/A'; 
-                
-            csv += `${escapeCsvField(data.name)},${escapeCsvField(data.studentId)},${escapeCsvField(data.className)},${escapeCsvField(checkinDate)},${escapeCsvField(data.section)},${escapeCsvField(timestamp)}\n`; 
-        });
-
-        const finalCsv = '\ufeff' + csv; 
-        const blob = new Blob([finalCsv], { type: 'text/csv;charset=utf-8;' });
-        
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        
-        const dateString = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        link.setAttribute("href", url);
-        link.setAttribute("download", `checkin_records_${dateString}.csv`);
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        alert(`成功匯出 ${querySnapshot.size} 筆打卡紀錄！`);
-
-    } catch (error) {
-        console.error("匯出 CSV 失敗: ", error);
-        alert("匯出 CSV 失敗：無法讀取資料庫或權限不足。");
-    }
-}
-
-// ----------------------------------------------------------------------
-// IV. 狀態監聽與全局綁定
-// ----------------------------------------------------------------------
-
-// 檢查登入狀態並在頁面載入時顯示正確的介面
-auth.onAuthStateChanged((user) => {
-    const loginStage = document.getElementById('login-stage');
-    const dashboardStage = document.getElementById('dashboard-stage');
-    
-    // 檢查元素是否存在，避免在其他頁面（如 index.html）載入時出錯
-    if (loginStage && dashboardStage) {
-        if (user) {
-            // 已登入，顯示後台
+        if (idTokenResult.claims.admin) {
             loginStage.classList.add('hidden');
             dashboardStage.classList.remove('hidden');
-            fetchCheckInRecords(); 
+            adminMessage.textContent = '';
+            
+            // 自動載入數據
+            fetchCheckInRecords();
             fetchUserRecords();
+
         } else {
-            // 未登入，顯示登入表單
-            loginStage.classList.remove('hidden');
-            dashboardStage.classList.add('hidden');
+            // 登入但非管理員
+            adminMessage.textContent = '此帳號沒有管理員權限。';
+            signOut(auth);
         }
+    } else {
+        // 登出或未登入
+        loginStage.classList.remove('hidden');
+        dashboardStage.classList.add('hidden');
     }
 });
 
+function getErrorMessage(error) {
+    switch (error.code) {
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+            return '帳號或密碼錯誤。';
+        case 'auth/invalid-email':
+            return 'Email 格式無效。';
+        default:
+            return '發生未知錯誤，請稍後再試。';
+    }
+}
 
-// ❗ 這是解決 'handleAdminLogin is not defined' 錯誤的關鍵！
-//    將所有需要被 HTML onclick 調用的函數顯式綁定到 window
-window.handleAdminLogin = handleAdminLogin;
-window.handleAdminLogout = handleAdminLogout; 
-window.fetchCheckInRecords = fetchCheckInRecords;
-window.deleteSingleCheckInRecord = deleteSingleCheckInRecord;
-window.deleteAllCheckInRecords = deleteAllCheckInRecords;
-window.exportCheckinsToCSV = exportCheckinsToCSV;
-window.fetchUserRecords = fetchUserRecords;
-window.firebaseAuth = auth;
+// ==========================================================
+// 4. 數據獲取與渲染
+// ==========================================================
+
+async function fetchRecords(collectionName, listElement) {
+    listElement.innerHTML = '<li>載入中...</li>';
+    adminMessage.textContent = '';
+    
+    try {
+        const response = await adminGetRecords({ collectionName });
+        const records = response.data;
+        
+        // 排序：打卡紀錄按 timestamp 倒序，用戶紀錄按學號排序
+        if (collectionName === 'checkins') {
+            records.sort((a, b) => b.timestamp.seconds - a.timestamp.seconds);
+            allCheckinsData = records; // 儲存數據用於匯出
+        } else {
+            records.sort((a, b) => a.studentId.localeCompare(b.studentId));
+        }
+
+        listElement.innerHTML = ''; // 清空列表
+        if (records.length === 0) {
+            listElement.innerHTML = `<li>目前沒有任何 ${collectionName === 'checkins' ? '打卡記錄' : '用戶建檔'}。</li>`;
+            return;
+        }
+
+        records.forEach(record => {
+            const li = document.createElement('li');
+            li.setAttribute('data-doc-id', record.id); // 儲存文件 ID
+
+            let content = '';
+            let deleteBtn = `<button class="delete-btn" onclick="deleteSingleRecord('${collectionName}', '${record.id}')">刪除</button>`;
+
+            if (collectionName === 'checkins') {
+                const dateString = new Date(record.timestamp.seconds * 1000).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+                content = `
+                    <span class="record-header">${record.checkinDate} ${dateString.split(' ')[1]}</span>
+                    [${record.className} ${record.name} (${record.studentId})] 
+                    <br> 打卡節次: ${record.section}
+                `;
+            } else { // users
+                content = `
+                    <span class="record-header">學號: ${record.studentId}</span>
+                    姓名: ${record.name} | 班級: ${record.className} 
+                    <br> 建檔時間: ${new Date(record.createdAt.seconds * 1000).toLocaleDateString('zh-TW')}
+                `;
+            }
+
+            li.innerHTML = deleteBtn + content;
+            listElement.appendChild(li);
+        });
+
+    } catch (error) {
+        console.error("Fetch Records Error:", error);
+        adminMessage.textContent = `載入 ${collectionName} 數據失敗: ${error.message}`;
+        listElement.innerHTML = `<li>載入錯誤：${error.message}</li>`;
+    }
+}
+
+window.fetchCheckInRecords = () => fetchRecords('checkins', recordsList);
+window.fetchUserRecords = () => fetchRecords('users', usersList);
+
+
+// ==========================================================
+// 5. 數據刪除操作
+// ==========================================================
+
+window.deleteSingleRecord = async function(collectionName, docId) {
+    if (!confirm(`確定要刪除這筆 ${collectionName} 記錄嗎？ (ID: ${docId})`)) return;
+
+    try {
+        const response = await deleteRecordById({ collectionName, docId });
+        adminMessage.textContent = response.data.message;
+        
+        // 刪除成功後重新整理列表
+        if (collectionName === 'checkins') {
+            fetchCheckInRecords();
+        } else {
+            fetchUserRecords();
+        }
+
+    } catch (error) {
+        console.error("Delete Error:", error);
+        adminMessage.textContent = `刪除失敗: ${error.message}`;
+    }
+};
+
+window.deleteAllCheckInRecords = async function() {
+    if (!confirm('!!! 警告 !!! 確定要刪除所有打卡紀錄嗎？此操作不可復原！')) return;
+
+    try {
+        const response = await deleteAllRecordsInCollection({ collectionName: 'checkins' });
+        adminMessage.textContent = response.data.message;
+        
+        // 刪除成功後重新整理列表
+        fetchCheckInRecords();
+        
+    } catch (error) {
+        console.error("Delete All Error:", error);
+        adminMessage.textContent = `批次刪除失敗: ${error.message}`;
+    }
+};
+
+// ==========================================================
+// 6. CSV 匯出功能
+// ==========================================================
+
+window.exportCheckinsToCSV = function() {
+    if (allCheckinsData.length === 0) {
+        alert('無打卡數據可匯出。');
+        return;
+    }
+
+    // 1. 定義標頭
+    const headers = ['日期', '時間', '班級', '姓名', '學號', '打卡節次'];
+    let csvContent = headers.join(',') + '\n';
+
+    // 2. 轉換數據
+    allCheckinsData.forEach(record => {
+        const dateObj = new Date(record.timestamp.seconds * 1000);
+        const datePart = dateObj.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' });
+        const timePart = dateObj.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
+
+        const row = [
+            `"${record.checkinDate || 'N/A'}"`, 
+            `"${timePart}"`,
+            `"${record.className || 'N/A'}"`,
+            `"${record.name || 'N/A'}"`,
+            `"${record.studentId || 'N/A'}"`,
+            `"${record.section || 'N/A'}"`
+        ];
+        csvContent += row.join(',') + '\n';
+    });
+
+    // 3. 創建並下載 CSV 檔案
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }); // \ufeff 確保中文編碼
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `checkin_records_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    adminMessage.textContent = `成功匯出 ${allCheckinsData.length} 筆紀錄到 CSV 檔案。`;
+};
