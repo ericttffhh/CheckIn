@@ -72,9 +72,14 @@
                 <button onclick="checkPassword()">確認打卡</button>
                 <button class="query-btn" onclick="queryHistory()">🔍 查詢紀錄</button>
             </div>
-
-            <button style="background-color: #17a2b8;" class="mode-switch-button" onclick="toggleManualMode()">切換節次模式</button>
-            <button style="background-color: #ffc107; color: #333;" onclick="showInfoStage()">🆕 第一次使用？我要建檔</button>
+<div id="password-stage" class="stage">
+    <button style="background-color: #17a2b8;" class="mode-switch-button" onclick="toggleManualMode()">切換節次模式</button>
+    <button style="background-color: #ffc107; color: #333;" onclick="showInfoStage()">🆕 第一次使用？我要建檔</button>
+    
+    <button style="background-color: #343a40;" onclick="window.location.href='admin.html'">⚙️ 管理員後台</button>
+    
+    <p id="password-error" class="error-message"></p>
+</div>
             
             <p id="password-error" class="error-message"></p>
         </div>
@@ -115,3 +120,4 @@
     <script src="script.js" type="module"></script>
 </body>
 </html>
+
