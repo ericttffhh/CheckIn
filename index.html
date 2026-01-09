@@ -5,145 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>學生會線上打卡系統</title>
     <style>
-        /* -------------------------------------
-         * 1. 基礎佈局與字體 (略)
-         * ------------------------------------- */
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            color: #333;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 550px;
-            margin: 30px auto;
-            padding: 20px;
-            text-align: center;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-            background-color: #fff;
-        }
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; color: #333; line-height: 1.6; margin: 0; padding: 0; }
+        .container { max-width: 550px; margin: 30px auto; padding: 20px; text-align: center; border: 1px solid #ccc; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); background-color: #fff; }
         h1 { color: #007bff; margin-bottom: 20px; }
         h2 { color: #333; margin-bottom: 15px; }
-        
-        /* -------------------------------------
-         * 2. 表單元素與按鈕
-         * ------------------------------------- */
-        input[type="password"], 
-        input[type="text"],
-        input[type="date"] { /* 新增 type="date" 的樣式 */
-            width: calc(100% - 20px); 
-            padding: 12px;
-            margin: 10px 0;
-            border: 1px solid #aaa;
-            border-radius: 5px;
-            box-sizing: border-box;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 12px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 17px;
-            width: 100%;
-            box-sizing: border-box;
-            margin-top: 10px;
-            transition: background-color 0.3s;
-        }
-
-        /* -------------------------------------
-         * 3. 階段與狀態顯示
-         * ------------------------------------- */
-        .stage { 
-            margin-bottom: 25px; 
-            padding: 20px; 
-            border: 1px dashed #ddd; 
-            border-radius: 8px; 
-            background-color: #fafafa; 
-        }
-        
-        .hidden { 
-            display: none !important; 
-        }
-        
+        input[type="password"], input[type="text"], input[type="date"] { width: calc(100% - 20px); padding: 12px; margin: 10px 0; border: 1px solid #aaa; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+        button { background-color: #007bff; color: white; padding: 12px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 17px; width: 100%; box-sizing: border-box; margin-top: 10px; transition: background-color 0.3s; }
+        .stage { margin-bottom: 25px; padding: 20px; border: 1px dashed #ddd; border-radius: 8px; background-color: #fafafa; }
+        .hidden { display: none !important; }
         .error-message { color: red; margin-top: 15px; font-weight: bold; }
         .result-box { background-color: #e9ecef; padding: 20px; border-radius: 8px; text-align: left; margin-top: 20px; border-left: 5px solid #28a745; }
-        .highlight { color: #d9534f; font-weight: bold; }
-        
-        /* -------------------------------------
-         * 4. 建檔表單 (INFO STAGE) 修正區 (略)
-         * ------------------------------------- */
-        #info-form label {
-            display: block; 
-            text-align: left; 
-            margin-top: 15px;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
-        }
-        #info-form input[type="text"], 
-        #info-form input[type="password"] {
-            width: 100%;
-        }
-
-        /* -------------------------------------
-         * 5. 控制按鈕與特殊按鈕 (略)
-         * ------------------------------------- */
-        .password-controls-row { display: flex; gap: 1%; margin-top: 15px; }
+        .password-controls-row { display: flex; gap: 2%; margin-top: 15px; }
         .password-controls-row button { width: 49%; margin: 0; }
-        .mode-switch-button { background-color: #17a2b8 !important; } 
+        .mode-switch-button { background-color: #17a2b8 !important; }
+        .query-button { background-color: #28a745 !important; }
         .admin-button { background-color: #6c757d !important; }
-        .new-user-button { background-color: #ffc107; color: #333; margin-top: 15px; } 
-
-        /* -------------------------------------
-         * 6. 手動節次選擇區塊 
-         * ------------------------------------- */
-        .date-selector-container {
-            margin-bottom: 15px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #fff;
-        }
-        .date-selector-container label {
-            display: block;
-            text-align: left;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
-        }
-        
-        .section-selector {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            padding: 15px;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-            margin-top: 15px;
-            text-align: left;
-            border: 1px solid #ddd;
-        }
-        .section-selector label {
-            display: flex; align-items: center; cursor: pointer; padding: 8px; border: 1px solid #ccc; border-radius: 4px; transition: background-color 0.2s; font-size: 0.9em; user-select: none;
-        }
-        .section-selector label:hover { background-color: #e2e2e2; }
-        .section-selector input[type="checkbox"] { margin-right: 8px; width: auto; }
-        .section-selector input[type="checkbox"]:checked + span { font-weight: bold; color: #007bff;}
-
-        /* -------------------------------------
-         * 7. 版權資訊 (略)
-         * ------------------------------------- */
-        .footer-copyright {
-            position: fixed; bottom: 5px; right: 10px; font-size: 12px; color: #ccc; opacity: 0.7;
-        }
+        .new-user-button { background-color: #ffc107; color: #333; margin-top: 15px; }
+        .history-item { border-bottom: 1px solid #eee; padding: 10px 0; text-align: left; font-size: 0.9em; }
+        .footer-copyright { position: fixed; bottom: 5px; right: 10px; font-size: 12px; color: #ccc; opacity: 0.7; }
+        .section-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 15px; background-color: #f0f0f0; border-radius: 5px; margin-top: 15px; text-align: left; }
     </style>
 </head>
 <body>
@@ -152,105 +32,71 @@
         <h1>學生會線上打卡</h1>
 
         <div id="password-stage" class="stage">
-            <h2>🔑 請輸入您的**專屬密語**</h2>
+            <h2>🔑 請輸入您的專屬密語</h2>
             <input type="password" id="password-input" placeholder="輸入您的專屬密語...">
             
             <div id="auto-section-status" style="margin-bottom: 10px; color: #28a745; font-weight: bold;">
-                🟢 **目前模式：自動節次判斷**
+                🟢 目前模式：自動節次判斷
             </div>
 
             <div id="manual-section-stage" class="hidden">
-                <div class="date-selector-container">
-                    <label for="manual-date-input">🗓️ 請選擇打卡日期：</label>
-                    <input type="date" id="manual-date-input" required>
+                <div style="margin-bottom: 10px;">
+                    <label>🗓️ 選擇日期：</label>
+                    <input type="date" id="manual-date-input">
                 </div>
-
                 <div class="section-selector">
-                    <strong>手動選擇節次 (可複選):</strong>
-                    <label><input type="checkbox" name="manual_section" value="🚩 升旗"> <span>升旗</span></label>
-                    <label><input type="checkbox" name="manual_section" value="第 1 節"> <span>1 節</span></label>
-                    <label><input type="checkbox" name="manual_section" value="第 2 節"> <span>2 節</span></label>
-                    <label><input type="checkbox" name="manual_section" value="第 3 節"> <span>3 節</span></label>
-                    <label><input type="checkbox" name="manual_section" value="第 4 節"> <span>4 節</span></label>
-                    <label><input type="checkbox" name="manual_section" value=" 午休"> <span>午休</span></label>
-                    <label><input type="checkbox" name="manual_section" value="第 5 節"> <span>5 節</span></label>
-                    <label><input type="checkbox" name="manual_section" value="第 6 節"> <span>6 節</span></label>
-                    <label><input type="checkbox" name="manual_section" value="第 7 節"> <span>7 節</span></label>
-                    <label><input type="checkbox" name="manual_section" value="第 8 節"> <span>8 節</span></label>
-                   
+                    <label><input type="checkbox" name="manual_section" value="🚩 升旗"> 升旗</label>
+                    <label><input type="checkbox" name="manual_section" value="第 1 節"> 1 節</label>
+                    <label><input type="checkbox" name="manual_section" value="第 2 節"> 2 節</label>
+                    <label><input type="checkbox" name="manual_section" value="第 3 節"> 3 節</label>
+                    <label><input type="checkbox" name="manual_section" value="第 4 節"> 4 節</label>
+                    <label><input type="checkbox" name="manual_section" value=" 午休"> 午休</label>
+                    <label><input type="checkbox" name="manual_section" value="第 5 節"> 5 節</label>
+                    <label><input type="checkbox" name="manual_section" value="第 6 節"> 6 節</label>
+                    <label><input type="checkbox" name="manual_section" value="第 7 節"> 7 節</label>
                 </div>
             </div>
             
             <div class="password-controls-row">
-                <button onclick="checkPassword()">確認密語並打卡</button>
-                <button class="mode-switch-button" onclick="toggleManualMode()">切換節次模式</button>
+                <button onclick="checkPassword()">確認打卡</button>
+                <button class="query-button" onclick="queryHistory()">🔍 查詢紀錄</button>
             </div>
 
-            <div class="password-controls">
-                <a href="admin.html" target="_blank" style="text-decoration: none; width: 100%;">
-                    <button class="admin-button">我是管理員 💻</button>
-                </a>
+            <div class="password-controls-row">
+                <button class="mode-switch-button" onclick="toggleManualMode()">切換模式</button>
+                <a href="admin.html" style="width: 49%;"><button class="admin-button">後台管理</button></a>
             </div>
             
-            <button class="new-user-button" onclick="showInfoStage()">🆕 我是第一次用！我要建檔</button>
-
+            <button class="new-user-button" onclick="showInfoStage()">🆕 第一次使用？我要建檔</button>
             <p id="password-error" class="error-message"></p>
         </div>
 
+        <div id="query-result-stage" class="stage hidden">
+            <h2>📋 歷史打卡紀錄</h2>
+            <div id="history-list-container" style="max-height: 300px; overflow-y: auto; background: #fff; padding: 10px; border-radius: 5px; border: 1px solid #ddd;"></div>
+            <button onclick="closeQuery()" style="background-color: #6c757d; margin-top: 15px;">⬅️ 返回打卡</button>
+        </div>
+
         <div id="info-stage" class="stage hidden">
-            <h2>📝 首次使用：建立專屬密語並建檔</h2>
+            <h2>📝 首次使用：建立資料</h2>
             <form id="info-form">
-                <p class="instruction-text">請建立您的**專屬通關密語** (下次打卡使用)，並填寫個人資料。</p>
-
-                <label for="personal-password-input">建立您的密語：</label>
-                <input type="password" id="personal-password-input" required placeholder="設定 6 位數以上的密語">
-                
-                <label for="class-input">班級：</label>
-                <input type="text" id="class-input" required placeholder="例如：二子乙">
-
-                <label for="name-input">姓名：</label>
-                <input type="text" id="name-input" required placeholder="例如：陳秉洋">
-
-                <label for="student-id-input">學號：</label>
-                <input type="text" id="student-id-input" required placeholder="例如：310912">
-
+                <input type="password" id="personal-password-input" required placeholder="設定 6 位數以上密語">
+                <input type="text" id="class-input" required placeholder="班級 (如：二子乙)">
+                <input type="text" id="name-input" required placeholder="姓名">
+                <input type="text" id="student-id-input" required placeholder="學號">
                 <button type="submit">✅ 完成建檔並打卡</button>
             </form>
-            <button onclick="resetData()" style="background-color: #dc3545; margin-top: 15px;">取消並返回</button>
+            <button onclick="resetData()" style="background-color: #dc3545; margin-top: 10px;">取消</button>
         </div>
 
         <div id="success-stage" class="stage hidden">
             <h2>✅ 打卡成功！</h2>
-            <div class="result-box">
-                <p><strong>班級:</strong> <span id="display-class"></span></p>
-                <p><strong>姓名:</strong> <span id="display-name"></span></p>
-                <p><strong>學號:</strong> <span id="display-student-id"></span></p>
-                <p class="highlight"><strong>🗓️ 打卡日期:</strong> <span id="display-date"></span></p> 
-                <p class="highlight"><strong>⏰ 本次節次:</strong> <span id="display-section"></span></p>
-                <p><small>打卡時間: <span id="display-timestamp"></span></small></p>
-            </div>
-            
-            <p id="upload-status" style="color: green; margin-top: 15px;">🔥 紀錄已即時傳送至雲端。</p>
-            
-            <button onclick="resetData()" style="background-color: #007bff; margin-top: 15px;">⬅️ 返回打卡介面</button>
+            <div class="result-box" id="success-content"></div>
+            <button onclick="resetData()" style="margin-top: 15px;">⬅️ 返回首頁</button>
         </div>
     </div>
-    
 
-
-<div class="footer-copyright">
-    Power by Ericqw
-</div>
-<script src="script.js" type="module"></script>
+    <div class="footer-copyright">Power by Ericqw</div>
+    <script src="script.js" type="module"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
