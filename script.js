@@ -186,51 +186,49 @@ window.checkPassword = function() {
 };
 
 async function performCheckIn(password) {
-    const sections = getSectionsToCheckIn();
-    
-    // ❗ 關鍵修正：確保在自動模式下也傳遞日期字串 ❗
-    const date = isManualMode ? manualDateInput.value : getTodayDateString();
+    const checkInBtn = document.querySelector('button[onclick="checkPassword()"]');
+    
+    // 防止重複點擊
+    if (checkInBtn) checkInBtn.disabled = true;
+    
+    const sections = getSectionsToCheckIn();
+    const date = isManualMode ? manualDateInput.value : getTodayDateString();
 
-    if (isManualMode && (!date || sections.length === 0)) {
-        passwordError.textContent = '手動模式下，請選擇日期和至少一個節次。';
-        return;
-    }
-    
-    // 這是實際傳遞給 HTTP Function 的 payload
-    const checkinDataPayload = { 
-        password: sanitizeInput(password),
-        sections: sections, 
-        date: date          
-    };
+    if (isManualMode && (!date || sections.length === 0)) {
+        passwordError.textContent = '手動模式下，請選擇日期和至少一個節次。';
+        if (checkInBtn) checkInBtn.disabled = false;
+        return;
+    }
 
-    try {
-        // 使用標準 fetch 呼叫 HTTP Function 
-        const response = await fetch('https://us-central1-classcheckinsystem.cloudfunctions.net/secureCheckIn', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            // 必須將 payload 包裝在 'data' 屬性中，以符合後端解析 (req.body.data)
-            body: JSON.stringify({ data: checkinDataPayload }) 
-        });
-        
-        // 解析 JSON 響應
-        const result = await response.json(); 
+    const checkinDataPayload = { 
+        password: sanitizeInput(password),
+        sections: sections, 
+        date: date          
+    };
 
-        if (response.ok && result && result.success) { // 檢查 HTTP 狀態碼和結果
-            displaySuccess(result); 
-        } else {
-            // 處理非 200 狀態碼或 success: false 的情況
-            const errorMsg = result ? (result.message || '密語無效或系統錯誤') : '伺服器響應失敗';
-            passwordError.textContent = `打卡失敗: ${errorMsg}。請確認密語是否正確。`;
-            console.error('打卡失敗詳情:', result);
-        }
+    try {
+        const response = await fetch('https://us-central1-classcheckinsystem.cloudfunctions.net/secureCheckIn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: checkinDataPayload }) 
+        });
+        
+        const result = await response.json(); 
 
-    } catch (error) {
-        passwordError.textContent = `操作失敗: ${error.message || '請檢查網路連線或密語。'}`;
-        console.error('Function 呼叫錯誤:', error);
-    }
+        if (response.ok && result && result.success) {
+            displaySuccess(result); 
+        } else {
+            const errorMsg = result ? (result.message || '密語無效') : '伺服器錯誤';
+            passwordError.textContent = `打卡失敗: ${errorMsg}`;
+        }
+    } catch (error) {
+        passwordError.textContent = `操作失敗: 網路連線異常`;
+    } finally {
+        // 請求結束後恢復按鈕
+        if (checkInBtn) checkInBtn.disabled = false;
+    }
 }
+
 
 function getSectionsToCheckIn() {
     if (!isManualMode) {
@@ -279,3 +277,4 @@ window.checkPassword = checkPassword;
 window.resetData = resetData;
 window.showInfoStage = showInfoStage;
 window.toggleManualMode = toggleManualMode;
+
