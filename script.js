@@ -1,36 +1,32 @@
 // ==========================================================
 // 1. Firebase SDK 導入與配置
 // ==========================================================
-// 注意：由於 HTML 中使用了 type="module"，這裡的 import 必須使用完整路徑
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js"; 
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
-// ❗❗❗❗ 請將以下替換為您的 Firebase 專案配置 ❗❗❗❗
 const firebaseConfig = {
-    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c", // 請確認這個金鑰是否正確
-    authDomain: "classcheckinsystem.firebaseapp.com",
-    projectId: "classcheckinsystem",
-    storageBucket: "classcheckinsystem.firebasestorage.app",
-    messagingSenderId: "592387609788",
-    appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
+    apiKey: "AIzaSyCqS2W49BcSvQV5XwKDPfb7HKeQp5-pO9c",
+    authDomain: "classcheckinsystem.firebaseapp.com",
+    projectId: "classcheckinsystem",
+    storageBucket: "classcheckinsystem.firebasestorage.app",
+    messagingSenderId: "592387609788",
+    appId: "1:592387609788:web:4f00a7fa9653b00fa8acb9"
 };
 
-// 初始化 Firebase 應用程式和 Functions
 const app = initializeApp(firebaseConfig);
-const functions = getFunctions(app, 'us-central1'); 
+const functions = getFunctions(app, 'us-central1');
 
-// 獲取 Callable Functions 的參考
 const secureUserSignup = httpsCallable(functions, 'secureUserSignup');
-// secureCheckIn 已改為 HTTP Function，不再是 Callable 
-// const secureCheckIn = httpsCallable(functions, 'secureCheckIn'); 
-
 
 // ==========================================================
-// 2. DOM 元素獲取與通用變數
+// 2. DOM 元素獲取
 // ==========================================================
 const passwordStage = document.getElementById('password-stage');
 const infoStage = document.getElementById('info-stage');
 const successStage = document.getElementById('success-stage');
+const queryResultStage = document.getElementById('query-result-stage'); // 新增：查詢結果區域
+const historyListContainer = document.getElementById('history-list-container'); // 新增：紀錄列表
+
 const infoForm = document.getElementById('info-form');
 const passwordInput = document.getElementById('password-input');
 const passwordError = document.getElementById('password-error');
@@ -40,24 +36,20 @@ const manualDateInput = document.getElementById('manual-date-input');
 
 let isManualMode = false;
 
-
 // ==========================================================
 // 3. 核心安全防禦函數 (淨化輸入)
 // ==========================================================
-
 function sanitizeInput(input) {
-    if (!input) return '';
-    let cleanString = String(input).trim();
-    cleanString = cleanString.replace(/&/g, '&amp;')
-                             .replace(/</g, '&lt;')
-                             .replace(/>/g, '&gt;')
-                             .replace(/"/g, '&quot;')
-                             .replace(/'/g, '&#x27;')
-                             .replace(/\//g, '&#x2F;');
-    return cleanString;
+    if (!input) return '';
+    return String(input).trim()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;');
 }
 
-// 輔助函數：取得今天的 YYYY-MM-DD 格式
 function getTodayDateString() {
     const today = new Date();
     const y = today.getFullYear();
@@ -66,215 +58,172 @@ function getTodayDateString() {
     return `${y}-${m}-${d}`;
 }
 
+// ==========================================================
+// 4. 查詢歷史紀錄功能 (新增)
+// ==========================================================
+window.queryHistory = async function() {
+    const password = passwordInput.value;
+    if (!password) {
+        passwordError.textContent = '請先輸入密語再點擊查詢。';
+        return;
+    }
+
+    passwordError.textContent = '正在查詢紀錄...';
+    historyListContainer.innerHTML = '<p>載入中...</p>';
+
+    try {
+        const response = await fetch('https://us-central1-classcheckinsystem.cloudfunctions.net/getUserCheckInHistory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: { password: sanitizeInput(password) } })
+        });
+        
+        const result = await response.json();
+
+        // 檢查後端回傳格式 (通常 Firebase HTTP 會包在 result.data 內)
+        const responseData = result.data || result;
+
+        if (response.ok && responseData.success) {
+            passwordError.textContent = '';
+            passwordStage.classList.add('hidden');
+            queryResultStage.classList.remove('hidden');
+
+            if (!responseData.records || responseData.records.length === 0) {
+                historyListContainer.innerHTML = '<p>尚無任何打卡紀錄。</p>';
+            } else {
+                historyListContainer.innerHTML = responseData.records.map(rec => `
+                    <div style="padding: 10px; border-bottom: 1px solid #eee; text-align: left;">
+                        📅 <strong>日期：</strong>${rec.checkinDate}<br>
+                        ⏰ <strong>節次：</strong>${rec.section}
+                    </div>
+                `).join('');
+            }
+        } else {
+            passwordError.textContent = `查詢失敗: ${responseData.message || '密語錯誤'}`;
+        }
+    } catch (error) {
+        passwordError.textContent = '系統連線異常，請稍後再試。';
+    }
+};
+
+window.closeQuery = function() {
+    queryResultStage.classList.add('hidden');
+    passwordStage.classList.remove('hidden');
+};
 
 // ==========================================================
-// 4. 頁面導航與模式切換函數
+// 5. 頁面導航與模式切換
 // ==========================================================
-
 function initializeMode() {
-    // 初始化日期輸入框為今天
-    manualDateInput.value = getTodayDateString();
-    
-    document.querySelector('.mode-switch-button').textContent = '切換節次模式';
+    if (manualDateInput) manualDateInput.value = getTodayDateString();
 }
 
 window.showInfoStage = function() {
-    passwordStage.classList.add('hidden');
-    infoStage.classList.remove('hidden');
-    passwordError.textContent = '';
+    passwordStage.classList.add('hidden');
+    infoStage.classList.remove('hidden');
+    passwordError.textContent = '';
 };
 
 window.resetData = function() {
-    window.location.reload(); 
+    window.location.reload();
 };
 
 window.toggleManualMode = function() {
-    isManualMode = !isManualMode;
-    const switchButton = document.querySelector('.mode-switch-button');
+    isManualMode = !isManualMode;
+    const switchButton = document.querySelector('.mode-switch-button');
 
-    if (isManualMode) {
-        manualSectionStage.classList.remove('hidden');
-        autoSectionStatus.innerHTML = '🔴 **目前模式：手動節次選擇 (可複選)**';
-        autoSectionStatus.style.color = '#dc3545';
-        switchButton.textContent = '切換回自動節次模式';
-    } else {
-        manualSectionStage.classList.add('hidden');
-        autoSectionStatus.innerHTML = '🟢 **目前模式：自動節次判斷**';
-        autoSectionStatus.style.color = '#28a745';
-        switchButton.textContent = '切換節次模式';
-        document.querySelectorAll('input[name="manual_section"]').forEach(checkbox => {
-            checkbox.checked = false;
-        });
-    }
-    passwordError.textContent = '';
+    if (isManualMode) {
+        manualSectionStage.classList.remove('hidden');
+        autoSectionStatus.innerHTML = '🔴 **手動模式 (可複選)**';
+        autoSectionStatus.style.color = '#dc3545';
+        if(switchButton) switchButton.textContent = '切換回自動模式';
+    } else {
+        manualSectionStage.classList.add('hidden');
+        autoSectionStatus.innerHTML = '🟢 **自動節次判斷**';
+        autoSectionStatus.style.color = '#28a745';
+        if(switchButton) switchButton.textContent = '切換節次模式';
+        document.querySelectorAll('input[name="manual_section"]').forEach(cb => cb.checked = false);
+    }
+    passwordError.textContent = '';
 };
 
-
 // ==========================================================
-// 5. 處理新使用者建檔 (secureUserSignup)
+// 6. 建檔與打卡邏輯
 // ==========================================================
-
 infoForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    passwordError.textContent = ''; // 清除舊錯誤
+    e.preventDefault();
+    passwordError.textContent = '正在建檔...';
 
-    const password = document.getElementById('personal-password-input').value.trim(); // 確保去除前後空白
-    const classValue = document.getElementById('class-input').value.trim();
-    const name = document.getElementById('name-input').value.trim();
-    const studentId = document.getElementById('student-id-input').value.trim();
-    
-    // 檢查所有欄位是否為空 
-    if (!password || !classValue || !name || !studentId) {
-        passwordError.textContent = '請填寫所有建檔欄位 (密語、班級、姓名、學號)！';
-        return;
-    }
-    
-    // 密語長度檢查
-    if (password.length < 6) {
-        passwordError.textContent = '密語長度必須至少為 6 位數。';
-        return;
-    }
+    const signupData = {
+        password: sanitizeInput(document.getElementById('personal-password-input').value),
+        className: sanitizeInput(document.getElementById('class-input').value),
+        name: sanitizeInput(document.getElementById('name-input').value),
+        studentId: sanitizeInput(document.getElementById('student-id-input').value).toUpperCase()
+    };
 
-    const signupData = { 
-        password: sanitizeInput(password), 
-        className: sanitizeInput(classValue),
-        name: sanitizeInput(name),
-        studentId: sanitizeInput(studentId).toUpperCase()
-    };
-    
-    console.log('--- 準備提交建檔資料 ---');
-    console.log(signupData);
-
-    try {
-        // 使用 httpsCallable 呼叫 secureUserSignup
-        const response = await secureUserSignup(signupData); 
-        const result = response.data; 
-
-        if (result && result.success) { 
-            console.log('建檔成功，準備打卡...');
-            // 由於建檔成功，直接用該密語進行第一次打卡
-            await performCheckIn(signupData.password); 
-
-        } else {
-            // Function 執行失敗，顯示後端返回的錯誤訊息
-            const errorMsg = result ? (result.message || '學號重複或密語太短') : '伺服器響應失敗';
-            passwordError.textContent = `建檔失敗: ${errorMsg}。請檢查學號是否已存在。`;
-            console.error('建檔失敗詳情:', response);
-        }
-
-    } catch (error) {
-        // 處理網路錯誤或 Function 內部拋出的錯誤
-        passwordError.textContent = `操作失敗: ${error.message || '請檢查網路連線。'}`;
-        console.error('Function 呼叫錯誤:', error);
-    }
+    try {
+        const response = await secureUserSignup(signupData);
+        if (response.data && response.data.success) {
+            await performCheckIn(signupData.password);
+        } else {
+            passwordError.textContent = `建檔失敗: ${response.data.message}`;
+        }
+    } catch (error) {
+        passwordError.textContent = `建檔出錯: ${error.message}`;
+    }
 });
 
-// ==========================================================
-// 6. 處理密語打卡 (secureCheckIn)
-// ==========================================================
-
 window.checkPassword = function() {
-    const password = passwordInput.value;
-    passwordError.textContent = '';
-    
-    if (!password) {
-        passwordError.textContent = '請輸入專屬密語。';
-        return;
-    }
-    
-    performCheckIn(password);
+    const password = passwordInput.value;
+    if (!password) { passwordError.textContent = '請輸入密語。'; return; }
+    performCheckIn(password);
 };
 
 async function performCheckIn(password) {
     const checkInBtn = document.querySelector('button[onclick="checkPassword()"]');
-    
-    // 防止重複點擊
     if (checkInBtn) checkInBtn.disabled = true;
     
-    const sections = getSectionsToCheckIn();
+    const sections = isManualMode ? 
+        Array.from(document.querySelectorAll('input[name="manual_section"]:checked')).map(cb => sanitizeInput(cb.value)) : [];
     const date = isManualMode ? manualDateInput.value : getTodayDateString();
-
-    if (isManualMode && (!date || sections.length === 0)) {
-        passwordError.textContent = '手動模式下，請選擇日期和至少一個節次。';
-        if (checkInBtn) checkInBtn.disabled = false;
-        return;
-    }
-
-    const checkinDataPayload = { 
-        password: sanitizeInput(password),
-        sections: sections, 
-        date: date          
-    };
 
     try {
         const response = await fetch('https://us-central1-classcheckinsystem.cloudfunctions.net/secureCheckIn', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: checkinDataPayload }) 
+            body: JSON.stringify({ data: { password: sanitizeInput(password), sections, date } })
         });
         
         const result = await response.json(); 
+        const resData = result.data || result;
 
-        if (response.ok && result && result.success) {
-            displaySuccess(result); 
+        if (response.ok && resData.success) {
+            displaySuccess(resData); 
         } else {
-            const errorMsg = result ? (result.message || '密語無效') : '伺服器錯誤';
-            passwordError.textContent = `打卡失敗: ${errorMsg}`;
+            passwordError.textContent = `打卡失敗: ${resData.message || '密語無效'}`;
         }
     } catch (error) {
-        passwordError.textContent = `操作失敗: 網路連線異常`;
+        passwordError.textContent = `連線失敗`;
     } finally {
-        // 請求結束後恢復按鈕
         if (checkInBtn) checkInBtn.disabled = false;
     }
 }
 
-
-function getSectionsToCheckIn() {
-    if (!isManualMode) {
-        // 自動模式下，傳遞空陣列，讓後端根據時間判斷節次
-        return []; 
-    }
-    
-    const selectedSections = [];
-    document.querySelectorAll('input[name="manual_section"]:checked').forEach(checkbox => {
-        selectedSections.push(sanitizeInput(checkbox.value)); 
-    });
-    return selectedSections;
-}
-
-
-// ==========================================================
-// 7. 顯示成功結果
-// ==========================================================
-
 function displaySuccess(data) {
-    passwordStage.classList.add('hidden');
-    infoStage.classList.add('hidden');
-    successStage.classList.remove('hidden');
+    passwordStage.classList.add('hidden');
+    infoStage.classList.add('hidden');
+    successStage.classList.remove('hidden');
 
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('zh-TW', { hour12: false });
-    
-    document.getElementById('display-class').textContent = data.className || 'N/A';
-    document.getElementById('display-name').textContent = data.name || 'N/A';
-    document.getElementById('display-student-id').textContent = data.studentId || 'N/A';
-    
-    document.getElementById('display-date').textContent = data.checkInDate || 'N/A';
-    document.getElementById('display-section').textContent = data.section || 'N/A';
-    document.getElementById('display-timestamp').textContent = timeString; 
-
-    passwordInput.value = ''; 
+    document.getElementById('display-class').textContent = data.className || 'N/A';
+    document.getElementById('display-name').textContent = data.name || 'N/A';
+    document.getElementById('display-student-id').textContent = data.studentId || 'N/A';
+    document.getElementById('display-date').textContent = data.checkInDate || 'N/A';
+    document.getElementById('display-section').textContent = data.section || 'N/A';
+    document.getElementById('display-timestamp').textContent = new Date().toLocaleTimeString('zh-TW', { hour12: false });
 }
-
-// ==========================================================
-// 8. 腳本初始化與事件綁定
-// ==========================================================
 
 document.addEventListener('DOMContentLoaded', initializeMode);
-
 window.checkPassword = checkPassword;
 window.resetData = resetData;
 window.showInfoStage = showInfoStage;
 window.toggleManualMode = toggleManualMode;
-
