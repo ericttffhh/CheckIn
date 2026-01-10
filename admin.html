@@ -5,43 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>打卡系統後台管理</title>
     <style>
-        /* CSS 樣式修正：確保後台元素有足夠的區分 */
-        .container { max-width: 900px; margin: 30px auto; padding: 30px; border: 1px solid #ccc; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        /* 基礎佈局 */
+        .container { max-width: 900px; margin: 30px auto; padding: 30px; border: 1px solid #ccc; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); font-family: sans-serif; }
         h1 { color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 10px; }
-        h2 { margin-top: 0; }
+        h2 { margin-top: 0; font-size: 1.4em; }
+        
         .login-box { padding: 20px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 20px; background-color: #f8f9fa; }
-        .records-container, .users-container {
-            margin-top: 30px; padding-top: 20px; border-top: 2px solid;
-        }
+        .hidden { display: none; }
+
+        /* 區塊容器 */
+        .records-container, .users-container { margin-top: 30px; padding-top: 20px; border-top: 2px solid; }
         .records-container { border-color: #007bff; }
         .users-container { border-color: #ffc107; }
 
-        #records-list, #users-list { list-style: none; padding: 0; text-align: left; }
-        #records-list li { background-color: #fff; padding: 10px; border-bottom: 1px dashed #ddd; margin-bottom: 8px; border-left: 5px solid #007bff; font-size: 0.95em; position: relative; }
-        #users-list li { background-color: #fff; padding: 10px; border-bottom: 1px dashed #ddd; margin-bottom: 8px; border-left: 5px solid #ffc107; font-size: 0.95em; }
+        /* 排序與功能工具列 */
+        .admin-controls { margin: 15px 0; display: flex; flex-wrap: wrap; gap: 8px; }
+        
+        /* 按鈕樣式優化 */
+        button { padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; transition: 0.3s; }
+        button:hover { opacity: 0.85; }
+        
+        .main-btn { background-color: #007bff; color: white; width: 100%; font-size: 16px; } /* 登入大按鈕 */
+        .export-btn { background-color: #0099cc; color: white; }
+        .delete-all-btn { background-color: #d9534f; color: white; }
+        .refresh-btn { background-color: #6c757d; color: white; }
+        .logout-btn { background-color: #dc3545; color: white; float: right; }
+        
+        /* 排序專用小按鈕 */
+        .sort-btn { background-color: #e9ecef; color: #495057; border: 1px solid #ced4da; }
+        .sort-btn:active { background-color: #dee2e6; }
+
+        /* 列表樣式 */
+        #records-list, #users-list { list-style: none; padding: 0; text-align: left; margin-top: 15px; }
+        #records-list li, #users-list li { background-color: #fff; padding: 12px; border-bottom: 1px dashed #ddd; margin-bottom: 8px; border-left: 5px solid; font-size: 0.95em; position: relative; box-shadow: 2px 2px 5px rgba(0,0,0,0.02); }
+        #records-list li { border-left-color: #007bff; }
+        #users-list li { border-left-color: #ffc107; }
 
         .record-header { font-weight: bold; color: #d9534f; margin-right: 15px; }
-        /* 讓 delete-btn 更好用 */
-        .delete-btn { 
-            background-color: #d9534f; 
-            float: right; 
-            padding: 5px 10px; 
-            font-size: 0.8em; 
-            width: auto; 
-            margin-left: 10px; 
-            border: none; 
-            border-radius: 4px; 
-            color: white; 
-            cursor: pointer; 
-            margin-top: 0; /* 覆蓋全域 button 樣式 */
-        }
-        .delete-all-btn { background-color: #d9534f !important; width: auto; margin-right: 10px; }
-        .export-btn { background-color: #0099cc; width: auto; margin-right: 10px; }
-        .refresh-btn { background-color: #6c757d; width: auto; margin-left: 10px; }
-        .logout-btn { background-color: #dc3545; width: auto; float: right; }
-        .hidden { display: none; }
+        
+        /* 刪除單筆按鈕 */
+        .delete-btn { background-color: #ff4d4d; color: white; float: right; padding: 4px 8px; font-size: 12px; border-radius: 4px; }
+
         input[type="email"], input[type="password"] { width: 100%; padding: 10px; margin: 5px 0 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; box-sizing: border-box; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -52,42 +57,51 @@
         <div id="login-stage" class="login-box">
             <h2>管理員登入</h2>
             <label for="admin-user">Email 帳號：</label>
-            <input type="email" id="admin-user" placeholder="輸入管理員註冊的 Email" required>
+            <input type="email" id="admin-user" placeholder="請輸入管理員 Email" required>
             
             <label for="admin-pass">密碼：</label>
-            <input type="password" id="admin-pass" placeholder="輸入密碼" required>
+            <input type="password" id="admin-pass" placeholder="請輸入密碼" required>
             
-            <button onclick="handleAdminLogin()">登入管理系統</button>
-            <p id="admin-message" class="error-message" style="margin-top: 10px; color: red;"></p>
+            <button onclick="handleAdminLogin()" class="main-btn">進入管理系統</button>
+            <p id="admin-message" style="margin-top: 10px; color: red; font-size: 0.9em;"></p>
         </div>
 
         <div id="dashboard-stage" class="hidden">
-            <button onclick="handleAdminLogout()" class="logout-btn">🚪 登出</button>
-            
-            <div class="records-container" style="clear: both;">
+            <button onclick="handleAdminLogout()" class="logout-btn">🚪 登出系統</button>
+            <div style="clear: both;"></div>
+
+            <div class="records-container">
                 <h2>📋 所有打卡紀錄</h2>
-                <p>已從雲端載入所有打卡紀錄，按時間倒序排列：</p>
-                
-                <button onclick="exportCheckinsToCSV()" class="export-btn">📥 匯出 CSV 檔案</button>
-                <button onclick="deleteAllCheckInRecords()" class="delete-all-btn">❌ 刪除所有紀錄 (不可復原)</button>
-                <button onclick="fetchCheckInRecords()" class="refresh-btn">🔄 重新整理打卡紀錄</button>
+                <div class="admin-controls">
+                    <button onclick="exportCheckinsToCSV()" class="export-btn">📥 匯出 CSV</button>
+                    <button onclick="deleteAllCheckInRecords()" class="delete-all-btn">❌ 清空紀錄</button>
+                    <button onclick="fetchCheckInRecords('default')" class="refresh-btn">🔄 重新整理</button>
+                </div>
+                <div class="admin-controls">
+                    <span style="font-size: 0.9em; line-height: 2.5;">排序方式：</span>
+                    <button onclick="fetchCheckInRecords('default')" class="sort-btn">⏰ 按最新時間</button>
+                    <button onclick="fetchCheckInRecords('name')" class="sort-btn">👤 按學生姓名</button>
+                </div>
 
                 <ul id="records-list"></ul>
             </div>
 
             <div class="users-container">
-                <h2>👥 學生建檔紀錄 (Users)</h2>
-                <p>已建檔的學生列表 (密語儲存處)：</p>
-                
-                <button onclick="fetchUserRecords()" style="background-color: #ffc107; color: #333; width: auto;">🔄 重新整理建檔紀錄</button>
+                <h2>👥 學生建檔名單</h2>
+                <div class="admin-controls">
+                    <button onclick="fetchUserRecords('default')" class="refresh-btn">🔄 重新整理</button>
+                    <button onclick="fetchUserRecords('name')" class="sort-btn">👤 按姓名排序</button>
+                </div>
 
                 <ul id="users-list"></ul>
             </div>
             
-            <a href="index.html"><button style="background-color: #6c757d; margin-top: 25px;">返回打卡頁面</button></a>
+            <a href="index.html" style="text-decoration: none;">
+                <button style="background-color: #6c757d; color: white; margin-top: 25px; width: 100%;">🔙 返回學生打卡頁面</button>
+            </a>
         </div>
     </div>
 
-<script src="admin.js" type="module"></script> 
+    <script src="admin.js" type="module"></script> 
 </body>
 </html>
