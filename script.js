@@ -194,16 +194,29 @@ window.queryHistory = async function() {
         });
         
         const result = await response.json();
+        // Firebase Functions 慣例會包裹在 result.result 或 result.data 中
         const responseData = result.data || result;
 
         if (response.ok && responseData.success) {
             passwordError.textContent = '';
+            
+            // 💡 新增：填入個人基本資料
+            // 注意：這裡假設後端回傳的 responseData 包含 user 物件 (內含 className, name, studentId)
+            if (responseData.user) {
+                document.getElementById('query-display-class').textContent = responseData.user.className || '無資料';
+                document.getElementById('query-display-name').textContent = responseData.user.name || '無資料';
+                document.getElementById('query-display-student-id').textContent = responseData.user.studentId || '無資料';
+            }
+
+            // 切換畫面
             passwordStage.classList.add('hidden');
             queryResultStage.classList.remove('hidden');
 
+            // 渲染打卡清單
             if (!responseData.records || responseData.records.length === 0) {
                 historyListContainer.innerHTML = '<p style="padding:20px;">尚無任何打卡紀錄。</p>';
             } else {
+                // 使用 map 產生列表，建議同樣對 rec.checkinDate 等內容做基本保護
                 historyListContainer.innerHTML = responseData.records.map(rec => `
                     <div style="padding: 12px; border-bottom: 1px solid #eee; text-align: left;">
                         📅 <strong>日期：</strong>${rec.checkinDate}<br>
@@ -215,6 +228,7 @@ window.queryHistory = async function() {
             passwordError.textContent = `查詢失敗: ${responseData.message || '密語錯誤'}`;
         }
     } catch (error) {
+        console.error("Query Error:", error);
         passwordError.textContent = '系統連線異常，請稍後再試。';
     }
 };
@@ -366,3 +380,4 @@ window.closeQuery = closeQuery;
 window.showBatchStage = showBatchStage;
 window.closeBatchStage = closeBatchStage;
 window.submitBatchCheckIn = submitBatchCheckIn;
+
