@@ -193,9 +193,11 @@ window.queryHistory = async function() {
             body: JSON.stringify({ data: { password: sanitizeInput(password) } })
         });
         
-        const result = await response.json();
-        // Firebase Functions 慣例會包裹在 result.result 或 result.data 中
-        const responseData = result.data || result;
+const result = await response.json();
+const responseData = result.data || result;
+
+// 💡 加入這一行，然後在瀏覽器按 F12 打開「控制台 (Console)」查看
+console.log("後端回傳的完整資料：", responseData);
 
         if (response.ok && responseData.success) {
             passwordError.textContent = '';
@@ -380,4 +382,5 @@ window.closeQuery = closeQuery;
 window.showBatchStage = showBatchStage;
 window.closeBatchStage = closeBatchStage;
 window.submitBatchCheckIn = submitBatchCheckIn;
+
 
