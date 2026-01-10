@@ -24,9 +24,10 @@ const secureUserSignup = httpsCallable(functions, 'secureUserSignup');
 const passwordStage = document.getElementById('password-stage');
 const infoStage = document.getElementById('info-stage');
 const successStage = document.getElementById('success-stage');
-const queryResultStage = document.getElementById('query-result-stage'); // 新增：查詢結果區域
-const historyListContainer = document.getElementById('history-list-container'); // 新增：紀錄列表
+const queryResultStage = document.getElementById('query-result-stage');
+const batchStage = document.getElementById('batch-stage'); // 批量打卡舞台
 
+const historyListContainer = document.getElementById('history-list-container');
 const infoForm = document.getElementById('info-form');
 const passwordInput = document.getElementById('password-input');
 const passwordError = document.getElementById('password-error');
@@ -34,10 +35,15 @@ const manualSectionStage = document.getElementById('manual-section-stage');
 const autoSectionStatus = document.getElementById('auto-section-status');
 const manualDateInput = document.getElementById('manual-date-input');
 
+// 批量打卡專用元素
+const batchDatePicker = document.getElementById('batch-date-picker');
+const selectedDatesDisplay = document.getElementById('selected-dates-display');
+
 let isManualMode = false;
+let selectedDates = []; // 儲存批量打卡的日期陣列
 
 // ==========================================================
-// 3. 核心安全防禦函數 (淨化輸入)
+// 3. 核心輔助函數
 // ==========================================================
 function sanitizeInput(input) {
     if (!input) return '';
@@ -59,7 +65,110 @@ function getTodayDateString() {
 }
 
 // ==========================================================
-// 4. 查詢歷史紀錄功能 (新增)
+// 4. 批量打卡功能 (New!)
+// ==========================================================
+window.showBatchStage = function() {
+    const password = passwordInput.value;
+    if (!password) {
+        passwordError.textContent = '請先輸入密語，才能進入批量模式。';
+        return;
+    }
+    passwordError.textContent = '';
+    passwordStage.classList.add('hidden');
+    batchStage.classList.remove('hidden');
+    // 初始化批量日期選擇器為今天
+    batchDatePicker.value = getTodayDateString();
+};
+
+window.closeBatchStage = function() {
+    batchStage.classList.add('hidden');
+    passwordStage.classList.remove('hidden');
+    selectedDates = [];
+    updateDateListUI();
+};
+
+window.addDateToList = function() {
+    const dateVal = batchDatePicker.value;
+    if (!dateVal) return;
+    
+    if (selectedDates.includes(dateVal)) {
+        alert("該日期已在列表中");
+        return;
+    }
+    
+    selectedDates.push(dateVal);
+    // 排序日期（由新到舊）
+    selectedDates.sort((a, b) => new Date(b) - new Date(a));
+    updateDateListUI();
+};
+
+window.removeDate = function(dateToRemove) {
+    selectedDates = selectedDates.filter(d => d !== dateToRemove);
+    updateDateListUI();
+};
+
+function updateDateListUI() {
+    if (selectedDates.length === 0) {
+        selectedDatesDisplay.innerHTML = '<span style="color: #999;">尚未選擇日期</span>';
+        return;
+    }
+    
+    selectedDatesDisplay.innerHTML = selectedDates.map(d => `
+        <span class="date-tag">
+            ${d} <span onclick="removeDate('${d}')">×</span>
+        </span>
+    `).join('');
+}
+
+window.submitBatchCheckIn = async function() {
+    const password = passwordInput.value;
+    const sectionRadio = document.querySelector('input[name="batch_section"]:checked');
+    
+    if (selectedDates.length === 0) {
+        alert("請至少選擇一個日期");
+        return;
+    }
+    if (!sectionRadio) {
+        alert("請選擇一個打卡節次");
+        return;
+    }
+
+    const btn = document.querySelector('button[onclick="submitBatchCheckIn()"]');
+    btn.disabled = true;
+    btn.textContent = "處理中...";
+
+    try {
+        const response = await fetch('https://us-central1-classcheckinsystem.cloudfunctions.net/secureBatchCheckIn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                data: { 
+                    password: sanitizeInput(password), 
+                    dates: selectedDates, 
+                    section: sectionRadio.value 
+                } 
+            })
+        });
+
+        const result = await response.json();
+        const resData = result.data || result;
+
+        if (response.ok && resData.success) {
+            alert(`成功！已完成 ${selectedDates.length} 筆紀錄。`);
+            window.location.reload();
+        } else {
+            alert("失敗：" + (resData.message || "密語錯誤或系統異常"));
+        }
+    } catch (error) {
+        alert("連線失敗，請檢查網路");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "🚀 開始批量打卡";
+    }
+};
+
+// ==========================================================
+// 5. 查詢歷史紀錄功能
 // ==========================================================
 window.queryHistory = async function() {
     const password = passwordInput.value;
@@ -79,8 +188,6 @@ window.queryHistory = async function() {
         });
         
         const result = await response.json();
-
-        // 檢查後端回傳格式 (通常 Firebase HTTP 會包在 result.data 內)
         const responseData = result.data || result;
 
         if (response.ok && responseData.success) {
@@ -89,10 +196,10 @@ window.queryHistory = async function() {
             queryResultStage.classList.remove('hidden');
 
             if (!responseData.records || responseData.records.length === 0) {
-                historyListContainer.innerHTML = '<p>尚無任何打卡紀錄。</p>';
+                historyListContainer.innerHTML = '<p style="padding:20px;">尚無任何打卡紀錄。</p>';
             } else {
                 historyListContainer.innerHTML = responseData.records.map(rec => `
-                    <div style="padding: 10px; border-bottom: 1px solid #eee; text-align: left;">
+                    <div style="padding: 12px; border-bottom: 1px solid #eee; text-align: left;">
                         📅 <strong>日期：</strong>${rec.checkinDate}<br>
                         ⏰ <strong>節次：</strong>${rec.section}
                     </div>
@@ -112,7 +219,7 @@ window.closeQuery = function() {
 };
 
 // ==========================================================
-// 5. 頁面導航與模式切換
+// 6. 頁面導航與模式切換
 // ==========================================================
 function initializeMode() {
     if (manualDateInput) manualDateInput.value = getTodayDateString();
@@ -148,30 +255,32 @@ window.toggleManualMode = function() {
 };
 
 // ==========================================================
-// 6. 建檔與打卡邏輯
+// 7. 建檔與打卡邏輯
 // ==========================================================
-infoForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    passwordError.textContent = '正在建檔...';
+if (infoForm) {
+    infoForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        passwordError.textContent = '正在建檔...';
 
-    const signupData = {
-        password: sanitizeInput(document.getElementById('personal-password-input').value),
-        className: sanitizeInput(document.getElementById('class-input').value),
-        name: sanitizeInput(document.getElementById('name-input').value),
-        studentId: sanitizeInput(document.getElementById('student-id-input').value).toUpperCase()
-    };
+        const signupData = {
+            password: sanitizeInput(document.getElementById('personal-password-input').value),
+            className: sanitizeInput(document.getElementById('class-input').value),
+            name: sanitizeInput(document.getElementById('name-input').value),
+            studentId: sanitizeInput(document.getElementById('student-id-input').value).toUpperCase()
+        };
 
-    try {
-        const response = await secureUserSignup(signupData);
-        if (response.data && response.data.success) {
-            await performCheckIn(signupData.password);
-        } else {
-            passwordError.textContent = `建檔失敗: ${response.data.message}`;
+        try {
+            const response = await secureUserSignup(signupData);
+            if (response.data && response.data.success) {
+                await performCheckIn(signupData.password);
+            } else {
+                passwordError.textContent = `建檔失敗: ${response.data.message}`;
+            }
+        } catch (error) {
+            passwordError.textContent = `建檔出錯: ${error.message}`;
         }
-    } catch (error) {
-        passwordError.textContent = `建檔出錯: ${error.message}`;
-    }
-});
+    });
+}
 
 window.checkPassword = function() {
     const password = passwordInput.value;
@@ -212,6 +321,7 @@ async function performCheckIn(password) {
 function displaySuccess(data) {
     passwordStage.classList.add('hidden');
     infoStage.classList.add('hidden');
+    batchStage.classList.add('hidden');
     successStage.classList.remove('hidden');
 
     document.getElementById('display-class').textContent = data.className || 'N/A';
@@ -222,8 +332,10 @@ function displaySuccess(data) {
     document.getElementById('display-timestamp').textContent = new Date().toLocaleTimeString('zh-TW', { hour12: false });
 }
 
+// 綁定全域函數 (因為此腳本為 module)
 document.addEventListener('DOMContentLoaded', initializeMode);
 window.checkPassword = checkPassword;
 window.resetData = resetData;
 window.showInfoStage = showInfoStage;
 window.toggleManualMode = toggleManualMode;
+window.removeDate = removeDate;
