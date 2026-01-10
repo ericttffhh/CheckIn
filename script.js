@@ -178,22 +178,32 @@ window.submitBatchCheckIn = async function() {
         });
 
         const result = await response.json();
-        const resData = result.data || result;
+        const resData = result.data || result; // 取得後端回傳的主體
 
         if (response.ok && resData.success) {
-            // 💡 呼叫成功畫面，傳入批量資料
+            // 💡 核心修正：自動偵測後端回傳的欄位 (相容 user 物件或直接回傳的欄位)
+            const userInfo = resData.user || resData;
+
             displaySuccess({
-                className: resData.className || "載入中...",
-                name: resData.name || "載入中...",
-                studentId: resData.studentId || "N/A",
-                checkInDate: [...selectedDates], // 傳入日期陣列副本
+                // 檢查 className 或 class，如果都沒有才顯示 "(未提供)"，避免卡在 "載入中"
+                className: userInfo.className || userInfo.class || "(未提供)",
+                name: userInfo.name || "(未提供)",
+                studentId: userInfo.studentId || "N/A",
+                // 💡 日期處理：將陣列 [2026-01-01, 2026-01-02] 轉成易讀的字串
+                checkInDate: selectedDates.length > 1 
+                    ? `${selectedDates[0]} 等 ${selectedDates.length} 個日期` 
+                    : selectedDates[0],
                 section: sectionRadio.value
             });
-            selectedDates = []; // 清空選取
+
+            selectedDates = []; // 清空選取日期
+            if (typeof updateDateList === 'function') updateDateList(); // 更新畫面上的日期清單標籤
+            
         } else {
             alert("失敗：" + (resData.message || "密語錯誤或系統異常"));
         }
     } catch (error) {
+        console.error("Batch error:", error);
         alert("連線失敗，請檢查網路");
     } finally {
         btn.disabled = false;
@@ -410,6 +420,7 @@ window.closeQuery = closeQuery;
 window.showBatchStage = showBatchStage;
 window.closeBatchStage = closeBatchStage;
 window.submitBatchCheckIn = submitBatchCheckIn;
+
 
 
 
