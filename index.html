@@ -36,7 +36,6 @@
         .back-btn { background-color: #6c757d !important; }
         #history-list-container { max-height: 300px; overflow-y: auto; background: white; border: 1px solid #ddd; border-radius: 5px; margin-top: 10px; }
         
-        /* 批量打卡標籤樣式 */
         .date-tag { display: inline-block; background: #007bff; color: white; padding: 4px 10px; border-radius: 20px; margin: 4px; font-size: 14px; }
         .date-tag span { margin-left: 8px; cursor: pointer; font-weight: bold; }
         .footer-copyright { position: fixed; bottom: 5px; right: 10px; font-size: 12px; color: #ccc; opacity: 0.7; }
@@ -84,18 +83,24 @@
             <p id="password-error" class="error-message"></p>
         </div>
 
-<div id="batch-stage" class="stage hidden">
-    <h2>📅 批量補打卡</h2>
-    
-    <div class="result-box" style="margin-bottom: 15px; border-left: 5px solid #6f42c1; background-color: #f3f0ff;">
-        <p><strong>操作人資料：</strong></p>
-        <p>班級：<span id="batch-display-class">載入中...</span></p>
-        <p>姓名：<span id="batch-display-name">載入中...</span></p>
-        <p>學號：<span id="batch-display-student-id">載入中...</span></p>
-    </div>
+        <div id="batch-stage" class="stage hidden">
+            <h2>📅 批量補打卡</h2>
+            
+            <div class="result-box" style="margin-bottom: 15px; border-left: 5px solid #6f42c1; background-color: #f3f0ff;">
+                <p><strong>操作人資料：</strong></p>
+                <p>班級：<span id="batch-display-class">載入中...</span></p>
+                <p>姓名：<span id="batch-display-name">載入中...</span></p>
+                <p>學號：<span id="batch-display-student-id">載入中...</span></p>
+            </div>
 
-    <p style="font-size: 14px; color: #666;">選擇日期並點擊新增，可選擇多個日期。</p>
-    </div>
+            <p style="font-size: 14px; color: #666;">選擇日期並點擊新增，可選擇多個日期。</p>
+            
+            <input type="date" id="batch-date-picker">
+            <button type="button" style="background-color: #28a745; margin-bottom: 10px;" onclick="addDateToList()">➕ 新增日期</button>
+            
+            <div id="selected-dates-display" style="min-height: 40px; border: 1px solid #eee; padding: 10px; background: #fff; margin-bottom: 15px; border-radius: 5px;">
+                <span style="color: #999;">尚未選擇日期</span>
+            </div>
 
             <div class="section-grid">
                 <label><input type="radio" name="batch_section" value="升旗"> 升旗</label>
@@ -116,19 +121,19 @@
             </div>
         </div>
 
-<div id="query-result-stage" class="stage hidden">
-    <h2>📋 您的打卡歷史紀錄</h2>
+        <div id="query-result-stage" class="stage hidden">
+            <h2>📋 您的打卡歷史紀錄</h2>
 
-    <div class="result-box" style="margin-bottom: 15px; border-left: 5px solid #007bff; background-color: #f0f7ff;">
-        <p><strong>基本資料確認：</strong></p>
-        <p>班級：<span id="query-display-class">載入中...</span></p>
-        <p>姓名：<span id="query-display-name">載入中...</span></p>
-        <p>學號：<span id="query-display-student-id">載入中...</span></p>
-    </div>
+            <div class="result-box" style="margin-bottom: 15px; border-left: 5px solid #007bff; background-color: #f0f7ff;">
+                <p><strong>基本資料確認：</strong></p>
+                <p>班級：<span id="query-display-class">載入中...</span></p>
+                <p>姓名：<span id="query-display-name">載入中...</span></p>
+                <p>學號：<span id="query-display-student-id">載入中...</span></p>
+            </div>
 
-    <div id="history-list-container"></div>
-    <button class="back-btn" onclick="closeQuery()">⬅️ 返回打卡</button>
-</div>
+            <div id="history-list-container"></div>
+            <button class="back-btn" onclick="closeQuery()">⬅️ 返回打卡</button>
+        </div>
 
         <div id="info-stage" class="stage hidden">
             <h2>📝 首次建檔</h2>
@@ -145,9 +150,9 @@
         <div id="success-stage" class="stage hidden">
             <h2>✅ 打卡成功！</h2>
             <div class="result-box">
-                <p>班級：<span id="display-class"></span></p>
-                <p>姓名：<span id="display-name"></span></p>
-                <p>學號：<span id="display-student-id"></span></p>
+                <p>班級：<span id="display-class">載入中...</span></p>
+                <p>姓名：<span id="display-name">載入中...</span></p>
+                <p>學號：<span id="display-student-id">載入中...</span></p>
                 <p>日期：<span id="display-date"></span></p>
                 <p>節次：<span id="display-section"></span></p>
                 <p>時間：<span id="display-timestamp"></span></p>
@@ -160,5 +165,3 @@
     <script src="script.js" type="module"></script>
 </body>
 </html>
-
-
