@@ -16,7 +16,6 @@
         .error-message { color: red; margin-top: 15px; font-weight: bold; }
         .result-box { background-color: #e9ecef; padding: 20px; border-radius: 8px; text-align: left; margin-top: 20px; border-left: 5px solid #28a745; }
         
-        /* 節次選擇器佈局：改為網格顯示 */
         .section-grid { 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
@@ -36,6 +35,10 @@
         .cancel-btn { background-color: #dc3545 !important; }
         .back-btn { background-color: #6c757d !important; }
         #history-list-container { max-height: 300px; overflow-y: auto; background: white; border: 1px solid #ddd; border-radius: 5px; margin-top: 10px; }
+        
+        /* 批量打卡標籤樣式 */
+        .date-tag { display: inline-block; background: #007bff; color: white; padding: 4px 10px; border-radius: 20px; margin: 4px; font-size: 14px; }
+        .date-tag span { margin-left: 8px; cursor: pointer; font-weight: bold; }
         .footer-copyright { position: fixed; bottom: 5px; right: 10px; font-size: 12px; color: #ccc; opacity: 0.7; }
     </style>
 </head>
@@ -72,16 +75,43 @@
                 <button onclick="checkPassword()">確認打卡</button>
                 <button class="query-btn" onclick="queryHistory()">🔍 查詢紀錄</button>
             </div>
-<div id="password-stage" class="stage">
-    <button style="background-color: #17a2b8;" class="mode-switch-button" onclick="toggleManualMode()">切換節次模式</button>
-    <button style="background-color: #ffc107; color: #333;" onclick="showInfoStage()">🆕 第一次使用？我要建檔</button>
-    
-    <button style="background-color: #343a40;" onclick="window.location.href='admin.html'">⚙️ 管理員後台</button>
-    
-    <p id="password-error" class="error-message"></p>
-</div>
+
+            <button style="background-color: #6f42c1;" onclick="showBatchStage()">📅 批量補打卡模式</button>
+            <button style="background-color: #17a2b8;" onclick="toggleManualMode()">切換手動/自動模式</button>
+            <button style="background-color: #ffc107; color: #333;" onclick="showInfoStage()">🆕 第一次使用？我要建檔</button>
+            <button style="background-color: #343a40;" onclick="window.location.href='admin.html'">⚙️ 管理員後台</button>
             
             <p id="password-error" class="error-message"></p>
+        </div>
+
+        <div id="batch-stage" class="stage hidden">
+            <h2>📅 批量補打卡</h2>
+            <p style="font-size: 14px; color: #666;">選擇日期並點擊新增，可選擇多個日期。</p>
+            
+            <input type="date" id="batch-date-picker">
+            <button type="button" style="background-color: #28a745; margin-bottom: 10px;" onclick="addDateToList()">➕ 新增日期</button>
+            
+            <div id="selected-dates-display" style="min-height: 40px; border: 1px solid #eee; padding: 10px; background: #fff; margin-bottom: 15px; border-radius: 5px;">
+                <span style="color: #999;">尚未選擇日期</span>
+            </div>
+
+            <div class="section-grid">
+                <label><input type="radio" name="batch_section" value="升旗"> 升旗</label>
+                <label><input type="radio" name="batch_section" value="第 1 節"> 第 1 節</label>
+                <label><input type="radio" name="batch_section" value="第 2 節"> 第 2 節</label>
+                <label><input type="radio" name="batch_section" value="第 3 節"> 第 3 節</label>
+                <label><input type="radio" name="batch_section" value="第 4 節"> 第 4 節</label>
+                <label><input type="radio" name="batch_section" value="午休"> 午休</label>
+                <label><input type="radio" name="batch_section" value="第 5 節"> 第 5 節</label>
+                <label><input type="radio" name="batch_section" value="第 6 節"> 第 6 節</label>
+                <label><input type="radio" name="batch_section" value="第 7 節"> 第 7 節</label>
+                <label><input type="radio" name="batch_section" value="第 8 節"> 第 8 節</label>
+            </div>
+
+            <div class="button-group">
+                <button onclick="submitBatchCheckIn()">🚀 開始批量打卡</button>
+                <button class="cancel-btn" onclick="closeBatchStage()">返回</button>
+            </div>
         </div>
 
         <div id="query-result-stage" class="stage hidden">
@@ -120,5 +150,3 @@
     <script src="script.js" type="module"></script>
 </body>
 </html>
-
-
