@@ -84,16 +84,18 @@
             <p id="password-error" class="error-message"></p>
         </div>
 
-        <div id="batch-stage" class="stage hidden">
-            <h2>📅 批量補打卡</h2>
-            <p style="font-size: 14px; color: #666;">選擇日期並點擊新增，可選擇多個日期。</p>
-            
-            <input type="date" id="batch-date-picker">
-            <button type="button" style="background-color: #28a745; margin-bottom: 10px;" onclick="addDateToList()">➕ 新增日期</button>
-            
-            <div id="selected-dates-display" style="min-height: 40px; border: 1px solid #eee; padding: 10px; background: #fff; margin-bottom: 15px; border-radius: 5px;">
-                <span style="color: #999;">尚未選擇日期</span>
-            </div>
+<div id="batch-stage" class="stage hidden">
+    <h2>📅 批量補打卡</h2>
+    
+    <div class="result-box" style="margin-bottom: 15px; border-left: 5px solid #6f42c1; background-color: #f3f0ff;">
+        <p><strong>操作人資料：</strong></p>
+        <p>班級：<span id="batch-display-class">載入中...</span></p>
+        <p>姓名：<span id="batch-display-name">載入中...</span></p>
+        <p>學號：<span id="batch-display-student-id">載入中...</span></p>
+    </div>
+
+    <p style="font-size: 14px; color: #666;">選擇日期並點擊新增，可選擇多個日期。</p>
+    </div>
 
             <div class="section-grid">
                 <label><input type="radio" name="batch_section" value="升旗"> 升旗</label>
@@ -158,4 +160,5 @@
     <script src="script.js" type="module"></script>
 </body>
 </html>
+
 
