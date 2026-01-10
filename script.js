@@ -25,7 +25,7 @@ const passwordStage = document.getElementById('password-stage');
 const infoStage = document.getElementById('info-stage');
 const successStage = document.getElementById('success-stage');
 const queryResultStage = document.getElementById('query-result-stage');
-const batchStage = document.getElementById('batch-stage'); // 批量打卡舞台
+const batchStage = document.getElementById('batch-stage'); 
 
 const historyListContainer = document.getElementById('history-list-container');
 const infoForm = document.getElementById('info-form');
@@ -43,7 +43,7 @@ let isManualMode = false;
 let selectedDates = []; // 儲存批量打卡的日期陣列
 
 // ==========================================================
-// 3. 核心輔助函數
+// 3. 核心輔助函數 (安全性與格式化)
 // ==========================================================
 function sanitizeInput(input) {
     if (!input) return '';
@@ -65,7 +65,7 @@ function getTodayDateString() {
 }
 
 // ==========================================================
-// 4. 批量打卡功能 (New!)
+// 4. 批量打卡功能邏輯
 // ==========================================================
 window.showBatchStage = function() {
     const password = passwordInput.value;
@@ -76,7 +76,6 @@ window.showBatchStage = function() {
     passwordError.textContent = '';
     passwordStage.classList.add('hidden');
     batchStage.classList.remove('hidden');
-    // 初始化批量日期選擇器為今天
     batchDatePicker.value = getTodayDateString();
 };
 
@@ -115,7 +114,7 @@ function updateDateListUI() {
     
     selectedDatesDisplay.innerHTML = selectedDates.map(d => `
         <span class="date-tag">
-            ${d} <span onclick="removeDate('${d}')">×</span>
+            ${d} <span class="remove-btn" onclick="removeDate('${d}')">×</span>
         </span>
     `).join('');
 }
@@ -154,8 +153,15 @@ window.submitBatchCheckIn = async function() {
         const resData = result.data || result;
 
         if (response.ok && resData.success) {
-            alert(`成功！已完成 ${selectedDates.length} 筆紀錄。`);
-            window.location.reload();
+            // 💡 呼叫成功畫面，傳入批量資料
+            displaySuccess({
+                className: resData.className || "載入中...",
+                name: resData.name || "載入中...",
+                studentId: resData.studentId || "N/A",
+                checkInDate: [...selectedDates], // 傳入日期陣列副本
+                section: sectionRadio.value
+            });
+            selectedDates = []; // 清空選取
         } else {
             alert("失敗：" + (resData.message || "密語錯誤或系統異常"));
         }
@@ -219,7 +225,7 @@ window.closeQuery = function() {
 };
 
 // ==========================================================
-// 6. 頁面導航與模式切換
+// 6. 介面導航與模式切換
 // ==========================================================
 function initializeMode() {
     if (manualDateInput) manualDateInput.value = getTodayDateString();
@@ -251,11 +257,10 @@ window.toggleManualMode = function() {
         if(switchButton) switchButton.textContent = '切換節次模式';
         document.querySelectorAll('input[name="manual_section"]').forEach(cb => cb.checked = false);
     }
-    passwordError.textContent = '';
 };
 
 // ==========================================================
-// 7. 建檔與打卡邏輯
+// 7. 建檔與打卡核心邏輯
 // ==========================================================
 if (infoForm) {
     infoForm.addEventListener('submit', async function(e) {
@@ -319,23 +324,45 @@ async function performCheckIn(password) {
 }
 
 function displaySuccess(data) {
+    // 隱藏所有輸入舞台
     passwordStage.classList.add('hidden');
     infoStage.classList.add('hidden');
     batchStage.classList.add('hidden');
+    queryResultStage.classList.add('hidden');
+    
+    // 顯示成功舞台
     successStage.classList.remove('hidden');
 
     document.getElementById('display-class').textContent = data.className || 'N/A';
     document.getElementById('display-name').textContent = data.name || 'N/A';
     document.getElementById('display-student-id').textContent = data.studentId || 'N/A';
-    document.getElementById('display-date').textContent = data.checkInDate || 'N/A';
+    
+    // 處理日期顯示 (單次 vs 批量)
+    const dateElement = document.getElementById('display-date');
+    if (Array.isArray(data.checkInDate)) {
+        dateElement.innerHTML = `
+            <span style="color: #007bff; font-weight: bold;">[批量共 ${data.checkInDate.length} 筆]</span><br>
+            <div style="font-size: 0.9em; max-height: 100px; overflow-y: auto; background: #f9f9f9; padding: 5px; border-radius: 4px;">
+                ${data.checkInDate.join(', ')}
+            </div>`;
+    } else {
+        dateElement.textContent = data.checkInDate || 'N/A';
+    }
+
     document.getElementById('display-section').textContent = data.section || 'N/A';
     document.getElementById('display-timestamp').textContent = new Date().toLocaleTimeString('zh-TW', { hour12: false });
 }
 
-// 綁定全域函數 (因為此腳本為 module)
+// 綁定全域函數 (因 script 是 module)
 document.addEventListener('DOMContentLoaded', initializeMode);
 window.checkPassword = checkPassword;
 window.resetData = resetData;
 window.showInfoStage = showInfoStage;
 window.toggleManualMode = toggleManualMode;
 window.removeDate = removeDate;
+window.addDateToList = addDateToList;
+window.queryHistory = queryHistory;
+window.closeQuery = closeQuery;
+window.showBatchStage = showBatchStage;
+window.closeBatchStage = closeBatchStage;
+window.submitBatchCheckIn = submitBatchCheckIn;
