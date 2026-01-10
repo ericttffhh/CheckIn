@@ -67,16 +67,44 @@ function getTodayDateString() {
 // ==========================================================
 // 4. 批量打卡功能邏輯
 // ==========================================================
-window.showBatchStage = function() {
+window.showBatchStage = async function() {
     const password = passwordInput.value;
     if (!password) {
-        passwordError.textContent = '請先輸入密語，才能進入批量模式。';
+        alert("請先輸入密語，系統才能確認您的身分。");
         return;
     }
-    passwordError.textContent = '';
+
+    // 先顯示畫面，並維持「載入中」
     passwordStage.classList.add('hidden');
     batchStage.classList.remove('hidden');
-    batchDatePicker.value = getTodayDateString();
+
+    try {
+        // 💡 呼叫與查詢紀錄相同的 API 來獲取身分
+        const response = await fetch('https://us-central1-classcheckinsystem.cloudfunctions.net/getUserCheckInHistory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: { password: sanitizeInput(password) } })
+        });
+        
+        const result = await response.json();
+        const responseData = result.data || result;
+
+        if (response.ok && responseData.success) {
+            // 嘗試抓取使用者資料
+            const displayUser = responseData.user || {};
+
+            // 💡 填入批量打卡的顯示欄位
+            document.getElementById('batch-display-class').textContent = displayUser.className || '後端未回傳';
+            document.getElementById('batch-display-name').textContent = displayUser.name || '後端未回傳';
+            document.getElementById('batch-display-student-id').textContent = displayUser.studentId || '後端未回傳';
+        } else {
+            alert("驗證失敗：密語可能錯誤。");
+            resetData(); // 返回主畫面
+        }
+    } catch (error) {
+        console.error("Batch Identity Error:", error);
+        document.getElementById('batch-display-name').textContent = '連線失敗';
+    }
 };
 
 window.closeBatchStage = function() {
@@ -382,5 +410,6 @@ window.closeQuery = closeQuery;
 window.showBatchStage = showBatchStage;
 window.closeBatchStage = closeBatchStage;
 window.submitBatchCheckIn = submitBatchCheckIn;
+
 
 
